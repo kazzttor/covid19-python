@@ -1,9 +1,9 @@
 # Covid-19 (sistema de acompanhamento em Python)
 O sistema de acompanhamento para a covid-19, escrito em Python, é um algoritmo que registra em banco de dados as informações fornecidas pelas autoridades de saúde, ou informações internas de um determinado local, com a opção de analisar essas informações matematicamente.
 
-Este sistema foi inspirado nos dados publicados pelas autoridades de saúde no município de Diadema [disponível aqui] (http://www.diadema.sp.gov.br/ss-informacoes-em-saude/25304-boletins), em São Paulo, onde os dados eram publicados, porém, sem a possibilidade de análise, já que estavam publicados no formato PDF.
+Este sistema foi inspirado nos dados publicados pelas autoridades de saúde no município de Diadema [disponível aqui](http://www.diadema.sp.gov.br/ss-informacoes-em-saude/25304-boletins), em São Paulo, onde os dados eram publicados, porém, sem a possibilidade de análise, já que estavam publicados no formato PDF.
 
-Com esse sistema os dados dos relatórios são informados manualmente, retornando uma base de dados que pode ser analisada, com critérios de proporcionalidade, crescimento de casos e ir agregando informações com outras fontes de dados, como, por exemplo, o relatório de [isolamento social fornecido pelo governo do estado de São Paulo] (https://www.saopaulo.sp.gov.br/coronavirus/isolamento/).
+Com esse sistema os dados dos relatórios são informados manualmente, retornando uma base de dados que pode ser analisada, com critérios de proporcionalidade, crescimento de casos e ir agregando informações com outras fontes de dados, como, por exemplo, o relatório de [isolamento social fornecido pelo governo do estado de São Paulo](https://www.saopaulo.sp.gov.br/coronavirus/isolamento/).
 
 Nessa base de dados são registrados os locais, os distritos que convenciona-se como uma subdivisão desses locais, os novos casos de contágio e fatais, além das taxas de crescimento de casos e mortes, taxa de letalidade que a proporção da quantidade de mortes em função do número total de casos, taxas de ocupação de leitos e UTI, taxa de isolamento, média móvel, que é a média de cinco dias de observações, sendo as duas datas anteriores e posteriores a uma determinada data, e taxa de incidência, que é a proporção de casos em função da população total do local.
 
@@ -27,4 +27,4 @@ Existe algoritmo utiliza a versão 3 da linguagem Python, e requer as biblioteca
 
 ## Para obter 
 
-Use o comando `git` ou faça o download na [página do projeto] (https://github.com/kazzttor/covid19-python)
+Use o comando `git` ou faça o download na [página do projeto](https://github.com/kazzttor/covid19-python)
