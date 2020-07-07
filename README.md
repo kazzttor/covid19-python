@@ -1,37 +1,30 @@
-## Welcome to GitHub Pages
+# Covid-19 (sistema de acompanhamento em Python)
+O sistema de acompanhamento para a covid-19, escrito em Python, é um algoritmo que registra em banco de dados as informações fornecidas pelas autoridades de saúde, ou informações internas de um determinado local, com a opção de analisar essas informações matematicamente.
 
-You can use the [editor on GitHub](https://github.com/kazzttor/covid19-python/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+Este sistema foi inspirado nos dados publicados pelas autoridades de saúde no município de Diadema [disponível aqui] (http://www.diadema.sp.gov.br/ss-informacoes-em-saude/25304-boletins), em São Paulo, onde os dados eram publicados, porém, sem a possibilidade de análise, já que estavam publicados no formato PDF.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+Com esse sistema os dados dos relatórios são informados manualmente, retornando uma base de dados que pode ser analisada, com critérios de proporcionalidade, crescimento de casos e ir agregando informações com outras fontes de dados, como, por exemplo, o relatório de [isolamento social fornecido pelo governo do estado de São Paulo] (https://www.saopaulo.sp.gov.br/coronavirus/isolamento/).
 
-### Markdown
+Nessa base de dados são registrados os locais, os distritos que convenciona-se como uma subdivisão desses locais, os novos casos de contágio e fatais, além das taxas de crescimento de casos e mortes, taxa de letalidade que a proporção da quantidade de mortes em função do número total de casos, taxas de ocupação de leitos e UTI, taxa de isolamento, média móvel, que é a média de cinco dias de observações, sendo as duas datas anteriores e posteriores a uma determinada data, e taxa de incidência, que é a proporção de casos em função da população total do local.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+As estatísticas, num primeiro momento, estão disponíveis para:
 
-```markdown
-Syntax highlighted code block
+- **Distritos**: taxa de letalidade, crescimento de casos e mortes em relação ao dia anterior, crescimento dos casos e mortes em relação a semana anterior e ao mês anterior.
+- **Locais**: todas as estatísticas. Taxa de letalidade, taxa de incidência, crescimento de casos, mortes e recuperados em relação ao dia anterior, crescimento dos casos, mortes e recuperados em relação a semana anterior e ao mês anterior, taxa de ocupação de UTI, taxa de ocupação de leitos, taxa de incidência, taxa de isolamento, média móvel de cinco dias anteriores à data, com data referenciada a dois dias anteriores.
 
-# Header 1
-## Header 2
-### Header 3
+Este sistema tem como finalidade a análise de informações externas, além de permitir uma análise mais segmentada por bairro, em uma cidade. Pode-se por exemplo, saber como anda o espalhamento da pandemia, e traçar por meio de modelos estatísticos uma projeção da curva de casos. Também pode permitir que seja determinado se um determinado local ainda está em uma curva ascendente de casos, descendente, ou platô, quando se atingiu pico de casos e não há mais crescimento ou redução.
 
-- Bulleted
-- List
+Existe algoritmo utiliza a versão 3 da linguagem Python, e requer as bibliotecas _SQLite_, _datetime_ e _ArgumentParser_. Este algoritmo permite que seja executável em terminal de comandos, mas pode ser acionado através do comando `python3 covid.py <conjunto de argumentos>`.
 
-1. Numbered
-2. List
+## Tarefas
 
-**Bold** and _Italic_ and `Code` text
+- [x] Banco de dados
+- [x] Cadastro de locais e distritos
+- [x] Cadastro dos dados da epidemia
+- [ ] Exibição do balanço (em progresso)
+- [ ] Cálculo da média móvel (em progresso)
+- [ ] Interface Web (em PHP)
 
-[Link](url) and ![Image](src)
-```
+## Para obter 
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/kazzttor/covid19-python/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+Use o comando `git` ou faça o download na [página do projeto] (https://github.com/kazzttor/covid19-python)
