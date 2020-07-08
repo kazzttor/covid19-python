@@ -21,8 +21,9 @@ Existe algoritmo utiliza a versão 3 da linguagem Python, e requer as biblioteca
 - [x] Banco de dados
 - [x] Cadastro de locais e distritos
 - [x] Cadastro dos dados da epidemia
-- [ ] Exibição do balanço (em progresso)
-- [ ] Cálculo da média móvel (em progresso)
+- [X] Exibição do balanço (_atualizado_)
+- [X] Cálculo da média móvel (_atualizado_)
+- [X] Balanço em uma determinada data e definiçao da data de registro já na linha de comando
 - [ ] Interface Web (em PHP)
 
 ## Para obter 
