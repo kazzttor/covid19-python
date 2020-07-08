@@ -550,40 +550,40 @@ def exibeestatistica(iddist,data):
     au30d_casos = float(txcrmesloc['aumentocasos'])*100
     au30d_mortos = float(txcrmesloc['aumentomortes'])*100
     au30d_recuperados = float(txcrmesloc['aumentorecuperados'])*100
-    if regsitrodiario:
-        print("Estes dados representam informações recolhidas em um intervalo de um dia (ou 24 horas).")
-    else:
-        print("Estes dados representam informações recolhidas em um intervalo maior de um dia (mais de 24 horas).\n\tIsto pode representar um valor maior que a média, interferindo nas informações calculadas.")
+    #if regsitrodiario:
+    #    print("Estes dados representam informações recolhidas em um intervalo de um dia (ou 24 horas).")
+    #else:
+    #    print("Estes dados representam informações recolhidas em um intervalo maior de um dia (mais de 24 horas).\n\tIsto pode representar um valor maior que a média, interferindo nas informações calculadas.")
     
-    print("CASOS:\n")
+    print("CASOS:")
     msgcasos = ""
     msgcasos = msgcasos + "\tTotal: " + '{:d}'.format(totalcasos)
     msgcasos = msgcasos + "\tNovos: " + '{:d}'.format(novoscasos)
     msgcasos = msgcasos + "\tMédia móvel: " + '{:.2f}'.format(mm_casos)
-    msgcasos = msgcasos + "\tAumento de casos: " + '{:.2f}'.format(txa_casos) + "% (ao balanço anterior)"
+    msgcasos = msgcasos + "\n\tAumento de casos: " + '{:.2f}'.format(txa_casos) + "% (ao balanço anterior)"
     if au7d_casos:
         msgcasos = msgcasos + " " + '{:.2f}'.format(au7d_casos) + "% (em uma semana)"
     if au30d_casos:
         msgcasos = msgcasos + " " + '{:.2f}'.format(au30d_casos) + "% (em 30 dias)"
     print(msgcasos)
-    print("MORTOS:\n")
+    print("MORTOS:")
     msgmortes = ""
     msgmortes = msgmortes + "\tTotal: " + '{:d}'.format(totalmortos)
     msgmortes = msgmortes + "\tNovos: " + '{:d}'.format(novasmortes)
     msgmortes = msgmortes + "\tMédia móvel: " + '{:.2f}'.format(mm_mortos)
-    msgmortes = msgmortes + "\tAumento de casos: " + '{:.2f}'.format(txa_mortes) + "% (ao balanço anterior)"
+    msgmortes = msgmortes + "\n\tAumento de casos: " + '{:.2f}'.format(txa_mortes) + "% (ao balanço anterior)"
     if au7d_mortos:
         msgmortes = msgmortes + " " + '{:.2f}'.format(au7d_mortos) + "% (em uma semana)"
     if au30d_mortos:
         msgmortes = msgmortes + " " + '{:.2f}'.format(au30d_mortos) + "% (em 30 dias)"
     print(msgmortes)
     if totalrecuperados:
-        print("RECUPERADOS:\n")
+        print("RECUPERADOS:")
         msgrecup = ""
         msgrecup = msgrecup + "\tTotal: " + '{:d}'.format(totalrecuperados)
         msgrecup = msgrecup + "\tNovos: " + '{:d}'.format(novosrecuperados)
         msgrecup = msgrecup + "\tMédia móvel: " + '{:.2f}'.format(mm_recuperados)
-        msgrecup = msgrecup + "\tAumento de casos: " + '{:.2f}'.format(txa_recuperados) + "% (ao balanço anterior)"
+        msgrecup = msgrecup + "\n\tAumento de casos: " + '{:.2f}'.format(txa_recuperados) + "% (ao balanço anterior)"
         if au7d_recuperados:
             msgrecup = msgrecup + " " + '{:.2f}'.format(au7d_recuperados) + "% (em uma semana)"
         if au30d_recuperados:
@@ -600,7 +600,7 @@ def exibeestatistica(iddist,data):
     if tx_uti:
         odata = odata + "\tTaxa de ocupação de UTI: " + '{:.2f}'.format(float(tx_uti)) + "%"
     if tx_isolam:
-        odata = odata + "\tTaxa de isolamento: " + '{:.2f}'.format(float(tx_isolam)) + "%"
+        odata = odata + "\n\tTaxa de isolamento: " + '{:.2f}'.format(float(tx_isolam)) + "%"
     if tx_recup:
         odata = odata + "\tÍndice de recuperados: " + '{:.2f}'.format(float(tx_recup)) + "%"
     print(odata)
@@ -619,14 +619,15 @@ def balanco(idlocal,dataref=hoje):
         print("== Exibição do balanço ==")
         data = datetime.strptime(dataref,"%Y-%m-%d")
         print("Data da observação: %s\tLocal: %s" % (data.strftime("%d/%m/%Y"),nomelocal))
-        print("Resumo para o local")
+        print("\nResumo para o local\n")
         iddip = buscadistritopai(idloc)
         exibeestatistica(iddip, dataref)
         sqldist = "SELECT iddistrito, nomedistrito FROM distritos WHERE idlocal = ? AND registropai IS NULL"
         distritos = cur.execute(sqldist,(idlocal,))
         distg = distritos.fetchall()
+        print("\nBalanço por distrito:\n")
         for distid in distg:
-            print("Registro para o distrito %s" % (distid[1]))
+            print("Balanço para o distrito %s" % (distid[1]))
             exibeestatistica(distid[0], dataref)
 
     else:
