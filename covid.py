@@ -20,9 +20,10 @@ cur = conex.cursor()
 parser = ArgumentParser(description='Sistema de acompanhamento da Covid-19.',epilog='Observe as mensagens após a execução em caso de erros.')
 parser.add_argument("-i", "--inicializa", help="inicializa banco de dados sqlite (elimina dados existentes).", action='store_true')
 parser.add_argument("-n", "--novolocal", help="cadastra um novo local.", action='store_true')
-parser.add_argument("-v", "--novodistrito", help="<id do local> cadastra uma nova região para um local existente.", action='store')
-parser.add_argument("-r", "--registra", help="<id do local> cadastra os dados do balanço para uma cidade existente.", action='store')
-parser.add_argument("-b", "--balanco", help="<id do local> exibe os dados do balanço para uma cidade existente.", action='store')
+parser.add_argument("-v", "--novodistrito", metavar="idlocal", help="cadastra uma nova região para um local existente.", action='store')
+parser.add_argument("-r", "--registra", metavar="idlocal", help="cadastra os dados do balanço para uma cidade existente.", action='store')
+parser.add_argument("-b", "--balanco", metavar="idlocal", help="exibe os dados do balanço para uma cidade existente.", action='store')
+parser.add_argument("-d", "--data", metavar="data", help="(opera com as opções -b e -r) define a data de referência. Omitido -b assume a data atual, -r será solicitado. ", action='store')
 args = parser.parse_args()
 
 hoje = datetime.now().strftime("%Y-%m-%d")
@@ -47,8 +48,10 @@ def validadata(data):
 
 def validanumero(numero):
     try:
-        int(numero)
+        float(numero)
         return True
+    except TypeError:
+        return False
     except ValueError:
         return False
         
@@ -128,14 +131,17 @@ def regcaso(data,iddistrito):
         print("Distrito inexistente ou inválido.")
     pass
 
-def consolidacaso(data,idlocal):
-    #Consolida as informações do dia.
+def buscadistritopai(iddistrito):
     sqldistpai = "SELECT iddistrito FROM distritos WHERE registropai = ? AND iddistrito = ?"
     dips = 'S'
-    gdist = cur.execute(sqldistpai,(dips,idlocal,))
-    iddistpai = None
+    gdist = cur.execute(sqldistpai,(dips,iddistrito,))
+    distritopai = None
     for idrp in gdist:
-        iddistpai = idrp[0]
+        distritopai = idrp[0]
+    return distritopai
+
+def consolidacaso(data,idlocal):
+    iddistpai = buscadistritopai(idlocal)
     if iddistpai:
         sqlpopulacao = "SELECT populacao FROM locais WHERE idlocal = ?"
         sqlcontdia = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND data = ? AND registropai IS NULL GROUP BY idlocal"
@@ -386,7 +392,7 @@ def novodistrito(idlocal):
     
     pass
 
-def registra(idlocal):
+def registra(idlocal, data="pedir"):
     sqlgid = "SELECT idlocal, nomelocal FROM locais WHERE idlocal = ?"
     gid = cur.execute(sqlgid,(idlocal,))
     idloc = None
@@ -398,10 +404,13 @@ def registra(idlocal):
     if idloc:
         print("== Registro de dados ==\n\nVamos cadastrar os dados para o local, informando os dados por distrito.")
         print("Cadastrando dados para o seguinte local: ",nomelocal)
-        dataobs = (input("Digite a data da medição (formato %s  - padrão data atual): " % hoje) or hoje)
-        while not validadata(dataobs):
-            print("Data informada inválida.")
+        if data == "pedir": 
             dataobs = (input("Digite a data da medição (formato %s  - padrão data atual): " % hoje) or hoje)
+            while not validadata(dataobs):
+                print("Data informada inválida.")
+                dataobs = (input("Digite a data da medição (formato %s  - padrão data atual): " % hoje) or hoje)
+        else:
+            dataobs = data
         sqldist = "SELECT iddistrito, nomedistrito FROM distritos WHERE idlocal = ? AND registropai IS NULL"
         distritos = cur.execute(sqldist,(idlocal,))
         distg = distritos.fetchall()
@@ -415,7 +424,189 @@ def registra(idlocal):
         
     pass
 
-def balanco(idlocal):
+def mediamovel(iddistrito,dataref):
+    sqlmm = "SELECT data, novoscasos, novasmortes, novosrecuperados, txocupacao, txuti, txisolamento FROM balancos WHERE iddistrito = ?  AND data < ? ORDER BY data DESC LIMIT 5"
+    dadosmm = cur.execute(sqlmm,(iddistrito,dataref,))
+    tdmm = dadosmm.fetchall()
+    casos = 0
+    mortes = 0
+    recuperados = 0
+    tocp = 0
+    tuti = 0
+    tiso = 0
+    for numdt in tdmm:
+        if numdt[1]: 
+            casos = casos + int(numdt[1])
+        if numdt[2]: 
+            mortes = mortes + int(numdt[2])
+        if numdt[3]: 
+            recuperados = recuperados + int(numdt[3])
+        if numdt[4]: 
+            tocp = tocp + int(numdt[4])
+        if numdt[5]: 
+            tuti = tuti + int(numdt[5])
+        if numdt[6]: 
+            tiso = tiso + int(numdt[6])
+    d = dict();
+    d['casos'] = casos/5
+    d['mortes'] = mortes/5
+    d['recuperados'] = recuperados/5
+    d['txocupacao'] = tocp/5
+    d['txuti'] = tuti/5
+    d['txisolamento'] = tiso/5
+    return d
+
+def txcrescimento(iddistrito,dataref,dias):
+    if int(dias) == 1:
+        offsetd = "-1 day"
+    else:
+        offsetd = "-" + str(dias) + " days"
+    sqldz = "SELECT data, sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados FROM balancos WHERE iddistrito = ? AND data <= date(?,?) GROUP BY iddistrito"
+    sqlda = "SELECT data, sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados FROM balancos WHERE iddistrito = ? AND data <= ? GROUP BY iddistrito"
+    gdz = cur.execute(sqldz,(iddistrito,dataref,offsetd,))
+    casoszero = morteszero = recuperadoszero = casosatual = mortesatual = recuperadosatual = 0
+    for dtz in gdz:
+        if dtz[1]:
+            casoszero = float(dtz[1])
+        if dtz[2]:
+            morteszero = float(dtz[2])
+        if dtz[3]:
+            recuperadoszero = float(dtz[3])
+    gda = cur.execute(sqlda,(iddistrito,dataref,))
+    for dta in gda:
+        if dta[1]:
+            casosatual = float(dta[1])
+        if dta[2]:
+            mortesatual = float(dta[2])
+        if dta[3]:
+            recuperadosatual = float(dta[3])
+    
+    c = dict();
+    c['aumentocasos'] = (casosatual/casoszero) - 1.0 if casoszero != 0 else 0
+    c['aumentomortes'] = (mortesatual/morteszero) - 1.0 if morteszero != 0 else 0
+    c['aumentorecuperados'] = (recuperadosatual/recuperadoszero) - 1.0 if recuperadoszero != 0 else 0
+    return c
+
+
+
+def exibeestatistica(iddist,data):
+    sqltotcasos = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados FROM balancos WHERE iddistrito = ? AND data <= ? GROUP BY iddistrito"
+    cur.execute(sqltotcasos,(iddist,data,))
+    gtc = cur.fetchone()
+    #print(gtc)
+    totalcasos = totalmortos = totalrecuperados = 0
+    if validanumero(gtc[0]):
+        totalcasos = int(gtc[0])
+    if validanumero(gtc[1]):
+        totalmortos = int(gtc[1])
+    if validanumero(gtc[2]): 
+        totalrecuperados = int(gtc[2])
+    
+    sqldadosdiae = "SELECT novoscasos, novasmortes, novosrecuperados, aumentocasos, aumentomortes, aumentorecuperados, registrodiario, txocupacao, txuti, txisolamento, txincidencia, txletalidade, txrecuperados FROM balancos WHERE iddistrito = ? AND data = ?"
+    cur.execute(sqldadosdiae,(iddist,data,))
+    dcd = cur.fetchone()
+    novoscasos = novasmortes = novosrecuperados = 0
+    txa_casos = txa_mortes = txa_recuperados = tx_ocup = tx_uti = tx_isolam = tx_inc = tx_let = tx_recup = 0.0
+    regsitrodiario = ""
+    #print(dcd)
+    if validanumero(dcd[0]):
+        novoscasos = dcd[0]
+    if validanumero(dcd[1]):
+        novasmortes = dcd[1]
+    if validanumero(dcd[2]):
+        novosrecuperados = dcd[2]
+    if validanumero(dcd[3]):
+        txa_casos = float(dcd[3])*100
+    if validanumero(dcd[4]):
+        txa_mortes = float(dcd[4])*100
+    if validanumero(dcd[5]):
+        txa_recuperados = float(dcd[5])*100
+    if validanumero(dcd[6]):
+        regsitrodiario = dcd[6]
+    if validanumero(dcd[7]):
+        tx_ocup = float(dcd[7])*100
+    if validanumero(dcd[8]):
+        tx_uti = float(dcd[8])*100
+    if validanumero(dcd[9]):
+        tx_isolam = float(dcd[9])*100
+    if validanumero(dcd[10]):
+        tx_inc = float(dcd[10])
+    if validanumero(dcd[11]):
+        tx_let = float(dcd[11])*100
+    if validanumero(dcd[12]):
+        tx_recup = float(dcd[12])*100
+    memovlocal = mediamovel(iddist,data)
+    mm_casos = float(memovlocal['casos'])
+    mm_mortos = float(memovlocal['mortes'])
+    mm_recuperados = float(memovlocal['recuperados'])
+    mm_txocupacao = float(memovlocal['txocupacao'])*100
+    mm_txuti = float(memovlocal['txuti'])*100
+    mm_txtisolamento = float(memovlocal['txisolamento'])*100
+    txcrsemloc = txcrescimento(iddist,data,7)
+    au7d_casos = float(txcrsemloc['aumentocasos'])*100
+    au7d_mortos = float(txcrsemloc['aumentomortes'])*100
+    au7d_recuperados = float(txcrsemloc['aumentorecuperados'])*100
+    txcrmesloc = txcrescimento(iddist,data,30)
+    au30d_casos = float(txcrmesloc['aumentocasos'])*100
+    au30d_mortos = float(txcrmesloc['aumentomortes'])*100
+    au30d_recuperados = float(txcrmesloc['aumentorecuperados'])*100
+    if regsitrodiario:
+        print("Estes dados representam informações recolhidas em um intervalo de um dia (ou 24 horas).")
+    else:
+        print("Estes dados representam informações recolhidas em um intervalo maior de um dia (mais de 24 horas).\n\tIsto pode representar um valor maior que a média, interferindo nas informações calculadas.")
+    
+    print("CASOS:\n")
+    msgcasos = ""
+    msgcasos = msgcasos + "\tTotal: " + '{:d}'.format(totalcasos)
+    msgcasos = msgcasos + "\tNovos: " + '{:d}'.format(novoscasos)
+    msgcasos = msgcasos + "\tMédia móvel: " + '{:.2f}'.format(mm_casos)
+    msgcasos = msgcasos + "\tAumento de casos: " + '{:.2f}'.format(txa_casos) + "% (ao balanço anterior)"
+    if au7d_casos:
+        msgcasos = msgcasos + " " + '{:.2f}'.format(au7d_casos) + "% (em uma semana)"
+    if au30d_casos:
+        msgcasos = msgcasos + " " + '{:.2f}'.format(au30d_casos) + "% (em 30 dias)"
+    print(msgcasos)
+    print("MORTOS:\n")
+    msgmortes = ""
+    msgmortes = msgmortes + "\tTotal: " + '{:d}'.format(totalmortos)
+    msgmortes = msgmortes + "\tNovos: " + '{:d}'.format(novasmortes)
+    msgmortes = msgmortes + "\tMédia móvel: " + '{:.2f}'.format(mm_mortos)
+    msgmortes = msgmortes + "\tAumento de casos: " + '{:.2f}'.format(txa_mortes) + "% (ao balanço anterior)"
+    if au7d_mortos:
+        msgmortes = msgmortes + " " + '{:.2f}'.format(au7d_mortos) + "% (em uma semana)"
+    if au30d_mortos:
+        msgmortes = msgmortes + " " + '{:.2f}'.format(au30d_mortos) + "% (em 30 dias)"
+    print(msgmortes)
+    if totalrecuperados:
+        print("RECUPERADOS:\n")
+        msgrecup = ""
+        msgrecup = msgrecup + "\tTotal: " + '{:d}'.format(totalrecuperados)
+        msgrecup = msgrecup + "\tNovos: " + '{:d}'.format(novosrecuperados)
+        msgrecup = msgrecup + "\tMédia móvel: " + '{:.2f}'.format(mm_recuperados)
+        msgrecup = msgrecup + "\tAumento de casos: " + '{:.2f}'.format(txa_recuperados) + "% (ao balanço anterior)"
+        if au7d_recuperados:
+            msgrecup = msgrecup + " " + '{:.2f}'.format(au7d_recuperados) + "% (em uma semana)"
+        if au30d_recuperados:
+            msgrecup = msgrecup + " " + '{:.2f}'.format(au30d_recuperados) + "% (em 30 dias)"
+        print(msgrecup)
+    print("Outros dados")
+    odata = ""
+    if tx_let:
+        odata = odata + "\tTaxa de letalidade: " + '{:.2f}'.format(float(tx_let)) + "%"
+    if tx_inc:
+        odata = odata + "\tTaxa de incidência: " + '{:.2f}'.format(float(tx_inc)) + "/100.000 hab"
+    if tx_ocup:
+        odata = odata + "\tTaxa de ocupação: " + '{:.2f}'.format(float(tx_ocup)) + "%"
+    if tx_uti:
+        odata = odata + "\tTaxa de ocupação de UTI: " + '{:.2f}'.format(float(tx_uti)) + "%"
+    if tx_isolam:
+        odata = odata + "\tTaxa de isolamento: " + '{:.2f}'.format(float(tx_isolam)) + "%"
+    if tx_recup:
+        odata = odata + "\tÍndice de recuperados: " + '{:.2f}'.format(float(tx_recup)) + "%"
+    print(odata)
+    pass
+
+def balanco(idlocal,dataref=hoje):
     sqlgid = "SELECT idlocal, nomelocal FROM locais WHERE idlocal = ?"
     gid = cur.execute(sqlgid,(idlocal,))
     idloc = None
@@ -425,12 +616,23 @@ def balanco(idlocal):
         nomelocal = ida[1]
     
     if idloc:
-        print("== Exibição do balanço ==\n\nVamos cadastrar um novo distrito, que é uma subdivisão de um local já cadastrado.\nPode cadastrar quantos quiser e será usado para um balanço específico.\nPara cadastrar é preciso responder a algumas perguntas, como o nome do distrito, população, tipo de local, e a data do início das observações.")
-        print("Cadastrando novo distrito para o seguinte local: ",nomelocal)
+        print("== Exibição do balanço ==")
+        data = datetime.strptime(dataref,"%Y-%m-%d")
+        print("Data da observação: %s\tLocal: %s" % (data.strftime("%d/%m/%Y"),nomelocal))
+        print("Resumo para o local")
+        iddip = buscadistritopai(idloc)
+        exibeestatistica(iddip, dataref)
+        sqldist = "SELECT iddistrito, nomedistrito FROM distritos WHERE idlocal = ? AND registropai IS NULL"
+        distritos = cur.execute(sqldist,(idlocal,))
+        distg = distritos.fetchall()
+        for distid in distg:
+            print("Registro para o distrito %s" % (distid[1]))
+            exibeestatistica(distid[0], dataref)
+
     else:
         print("Local inexistente ou inválido.")
     
-    # Query para média movel a calcular: SELECT data, novoscasos, novasmortes, novosrecuperados, txocupacao, txuti, txisolamento FROM balancos WHERE iddistrito = 1 ORDER BY data DESC LIMIT 5
+    # Query para média movel a calcular: SELECT data, novoscasos, novasmortes, novosrecuperados, txocupacao, txuti, txisolamento FROM balancos WHERE iddistrito = 1  AND data < '2020-05-25' ORDER BY data DESC LIMIT 5
     # Query para os distritos: SELECT balancos.iddistrito, sum(novoscasos) as totalcasos, sum(novasmortes) as totalmortes, aumentocasos, aumentomortes, txletalidade FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE data = '2020-06-30' AND registropai IS NULL GROUP BY balancos.iddistrito
 
 
@@ -447,7 +649,19 @@ if args.novodistrito:
 	novodistrito(args.novodistrito)
     
 if args.registra:
-	registra(args.registra)
+    if args.data:
+        if validadata(args.data):
+	        registra(args.registra,args.data)
+        else:
+            print("Data informada inválida: utilize uma dáta válida, no passado para a opção -d ou omita a opção e digite a data durante a execução do cadastro.")
+    else:
+        registra(args.registra,"pedir")
     
 if args.balanco:
-	balanco(args.balanco)
+    if args.data:
+        if validadata(args.data):
+            balanco(args.balanco,args.data)
+        else:
+            print("Data informada inválida: utilize uma dáta válida, no passado para a opção -d ou omita a opção e digite a data durante a execução do cadastro.")
+    else:
+        balanco(args.balanco)
