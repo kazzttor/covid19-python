@@ -5,12 +5,16 @@ Este sistema foi inspirado nos dados publicados pelas autoridades de saúde no m
 
 Com esse sistema os dados dos relatórios são informados manualmente, retornando uma base de dados que pode ser analisada, com critérios de proporcionalidade, crescimento de casos e ir agregando informações com outras fontes de dados, como, por exemplo, o relatório de [isolamento social fornecido pelo governo do estado de São Paulo](https://www.saopaulo.sp.gov.br/coronavirus/isolamento/).
 
-Nessa base de dados são registrados os locais, os distritos que convenciona-se como uma subdivisão desses locais, os novos casos de contágio e fatais, além das taxas de crescimento de casos e mortes, taxa de letalidade que a proporção da quantidade de mortes em função do número total de casos, taxas de ocupação de leitos e UTI, taxa de isolamento, média móvel, que é a média de cinco dias de observações, sendo as duas datas anteriores e posteriores a uma determinada data, e taxa de incidência, que é a proporção de casos em função da população total do local.
+Nessa base de dados são registrados os locais, os distritos que convenciona-se como uma subdivisão desses locais, os novos casos de contágio e fatais, além das taxas de crescimento de casos e mortes, taxa de letalidade que a proporção da quantidade de mortes em função do número total de casos, taxas de ocupação de leitos e UTI, taxa de isolamento, média móvel, que é a média das sete últimas observações anteriores a data consultada, e taxa de incidência, que é a proporção de casos em função da população total do local.
 
-As estatísticas, num primeiro momento, estão disponíveis para:
+A análise da média móvel consiste em comparar a média móvel com a média de 15 dias antes e determinar se há uma tendência de alta, quando a variação é positiva acima de 15%; queda, quando a variação é negativa acima de 15%; e estável, quando a variação oscilar entre -15% e +15%.
 
-- **Distritos**: taxa de letalidade, crescimento de casos e mortes em relação ao dia anterior, crescimento dos casos e mortes em relação a semana anterior e ao mês anterior.
-- **Locais**: todas as estatísticas. Taxa de letalidade, taxa de incidência, crescimento de casos, mortes e recuperados em relação ao dia anterior, crescimento dos casos, mortes e recuperados em relação a semana anterior e ao mês anterior, taxa de ocupação de UTI, taxa de ocupação de leitos, taxa de incidência, taxa de isolamento, média móvel de cinco dias anteriores à data, com data referenciada a dois dias anteriores.
+As estatísticas estão disponíveis para:
+
+- **Distritos**: taxa de letalidade, crescimento de casos e mortes em relação ao dia anterior com análise da média móvel, crescimento dos casos e mortes em relação a semana anterior e ao mês anterior.
+- **Locais**: todas as estatísticas. Taxa de letalidade, taxa de incidência, crescimento de casos, mortes e recuperados em relação ao dia anterior com análise da média móvel, crescimento dos casos, mortes e recuperados em relação a semana anterior e ao mês anterior, taxa de ocupação de UTI, taxa de ocupação de leitos, taxa de incidência, taxa de isolamento com análise da média móvel.
+
+A análise da média móvel da taxa de isolamento é importante, pois há uma correlação inversamente proporcional entre isolamento e aumento de casos.
 
 Este sistema tem como finalidade a análise de informações externas, além de permitir uma análise mais segmentada por bairro, em uma cidade. Pode-se por exemplo, saber como anda o espalhamento da pandemia, e traçar por meio de modelos estatísticos uma projeção da curva de casos. Também pode permitir que seja determinado se um determinado local ainda está em uma curva ascendente de casos, descendente, ou platô, quando se atingiu pico de casos e não há mais crescimento ou redução.
 
