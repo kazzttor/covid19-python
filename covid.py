@@ -5,6 +5,8 @@
 
 from argparse import ArgumentParser
 from datetime import datetime, date, time, timedelta
+import locale
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 import sqlite3
 from sqlite3 import Error
 db_file = 'covid.db3'
@@ -55,11 +57,19 @@ def validanumero(numero):
     except ValueError:
         return False
         
-def diaanterior(data):
-    diaanterior = datetime.strptime(data,"%Y-%m-%d") - timedelta(days=1)
+def diaanterior(data, dias=1):
+    diaanterior = datetime.strptime(data,"%Y-%m-%d") - timedelta(days=dias)
     return diaanterior.strftime("%Y-%m-%d")
+
+def statusav(valor):
+    if valor > 0.15:
+        return "Aumento"
+    elif valor < -0.15:
+        return "Queda"
+    else:
+        return "Estável"
     
-        
+    
 def regcaso(data,iddistrito):
     ontem = diaanterior(data)
     sqldiant = "SELECT idbalanco FROM balancos WHERE iddistrito = ? AND data = ?"
@@ -425,15 +435,17 @@ def registra(idlocal, data="pedir"):
     pass
 
 def mediamovel(iddistrito,dataref):
-    sqlmm = "SELECT data, novoscasos, novasmortes, novosrecuperados, txocupacao, txuti, txisolamento FROM balancos WHERE iddistrito = ?  AND data < ? ORDER BY data DESC LIMIT 5"
+    
+    sqlmm = "SELECT data, novoscasos, novasmortes, novosrecuperados, txocupacao, txuti, txisolamento, txletalidade FROM balancos WHERE iddistrito = ?  AND data < ? ORDER BY data DESC LIMIT 7"
     dadosmm = cur.execute(sqlmm,(iddistrito,dataref,))
     tdmm = dadosmm.fetchall()
     casos = 0
     mortes = 0
     recuperados = 0
-    tocp = 0
-    tuti = 0
-    tiso = 0
+    tocp = 0.0
+    tuti = 0.0
+    tiso = 0.0
+    tlet = 0.0
     for numdt in tdmm:
         if numdt[1]: 
             casos = casos + int(numdt[1])
@@ -442,18 +454,21 @@ def mediamovel(iddistrito,dataref):
         if numdt[3]: 
             recuperados = recuperados + int(numdt[3])
         if numdt[4]: 
-            tocp = tocp + int(numdt[4])
+            tocp = tocp + float(numdt[4])
         if numdt[5]: 
-            tuti = tuti + int(numdt[5])
+            tuti = tuti + float(numdt[5])
         if numdt[6]: 
-            tiso = tiso + int(numdt[6])
+            tiso = tiso + float(numdt[6])
+        if numdt[7]: 
+            tlet = tlet + float(numdt[7])
     d = dict();
-    d['casos'] = casos/5
-    d['mortes'] = mortes/5
-    d['recuperados'] = recuperados/5
-    d['txocupacao'] = tocp/5
-    d['txuti'] = tuti/5
-    d['txisolamento'] = tiso/5
+    d['casos'] = casos/7
+    d['mortes'] = mortes/7
+    d['recuperados'] = recuperados/7
+    d['txocupacao'] = tocp/7
+    d['txuti'] = tuti/7
+    d['txisolamento'] = tiso/7
+    d['txletalidade'] = tlet/7
     return d
 
 def txcrescimento(iddistrito,dataref,dias):
@@ -487,123 +502,138 @@ def txcrescimento(iddistrito,dataref,dias):
     c['aumentorecuperados'] = (recuperadosatual/recuperadoszero) - 1.0 if recuperadoszero != 0 else 0
     return c
 
-
-
 def exibeestatistica(iddist,data):
     sqltotcasos = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados FROM balancos WHERE iddistrito = ? AND data <= ? GROUP BY iddistrito"
     cur.execute(sqltotcasos,(iddist,data,))
     gtc = cur.fetchone()
-    #print(gtc)
-    totalcasos = totalmortos = totalrecuperados = 0
-    if validanumero(gtc[0]):
-        totalcasos = int(gtc[0])
-    if validanumero(gtc[1]):
-        totalmortos = int(gtc[1])
-    if validanumero(gtc[2]): 
-        totalrecuperados = int(gtc[2])
-    
-    sqldadosdiae = "SELECT novoscasos, novasmortes, novosrecuperados, aumentocasos, aumentomortes, aumentorecuperados, registrodiario, txocupacao, txuti, txisolamento, txincidencia, txletalidade, txrecuperados FROM balancos WHERE iddistrito = ? AND data = ?"
-    cur.execute(sqldadosdiae,(iddist,data,))
-    dcd = cur.fetchone()
-    novoscasos = novasmortes = novosrecuperados = 0
-    txa_casos = txa_mortes = txa_recuperados = tx_ocup = tx_uti = tx_isolam = tx_inc = tx_let = tx_recup = 0.0
-    regsitrodiario = ""
-    #print(dcd)
-    if validanumero(dcd[0]):
-        novoscasos = dcd[0]
-    if validanumero(dcd[1]):
-        novasmortes = dcd[1]
-    if validanumero(dcd[2]):
-        novosrecuperados = dcd[2]
-    if validanumero(dcd[3]):
-        txa_casos = float(dcd[3])*100
-    if validanumero(dcd[4]):
-        txa_mortes = float(dcd[4])*100
-    if validanumero(dcd[5]):
-        txa_recuperados = float(dcd[5])*100
-    if validanumero(dcd[6]):
-        regsitrodiario = dcd[6]
-    if validanumero(dcd[7]):
-        tx_ocup = float(dcd[7])*100
-    if validanumero(dcd[8]):
-        tx_uti = float(dcd[8])*100
-    if validanumero(dcd[9]):
-        tx_isolam = float(dcd[9])*100
-    if validanumero(dcd[10]):
-        tx_inc = float(dcd[10])
-    if validanumero(dcd[11]):
-        tx_let = float(dcd[11])*100
-    if validanumero(dcd[12]):
-        tx_recup = float(dcd[12])*100
-    memovlocal = mediamovel(iddist,data)
-    mm_casos = float(memovlocal['casos'])
-    mm_mortos = float(memovlocal['mortes'])
-    mm_recuperados = float(memovlocal['recuperados'])
-    mm_txocupacao = float(memovlocal['txocupacao'])*100
-    mm_txuti = float(memovlocal['txuti'])*100
-    mm_txtisolamento = float(memovlocal['txisolamento'])*100
-    txcrsemloc = txcrescimento(iddist,data,7)
-    au7d_casos = float(txcrsemloc['aumentocasos'])*100
-    au7d_mortos = float(txcrsemloc['aumentomortes'])*100
-    au7d_recuperados = float(txcrsemloc['aumentorecuperados'])*100
-    txcrmesloc = txcrescimento(iddist,data,30)
-    au30d_casos = float(txcrmesloc['aumentocasos'])*100
-    au30d_mortos = float(txcrmesloc['aumentomortes'])*100
-    au30d_recuperados = float(txcrmesloc['aumentorecuperados'])*100
-    #if regsitrodiario:
-    #    print("Estes dados representam informações recolhidas em um intervalo de um dia (ou 24 horas).")
-    #else:
-    #    print("Estes dados representam informações recolhidas em um intervalo maior de um dia (mais de 24 horas).\n\tIsto pode representar um valor maior que a média, interferindo nas informações calculadas.")
-    
-    print("CASOS:")
-    msgcasos = ""
-    msgcasos = msgcasos + "\tTotal: " + '{:d}'.format(totalcasos)
-    msgcasos = msgcasos + "\tNovos: " + '{:d}'.format(novoscasos)
-    msgcasos = msgcasos + "\tMédia móvel: " + '{:.2f}'.format(mm_casos)
-    msgcasos = msgcasos + "\n\tAumento de casos: " + '{:.2f}'.format(txa_casos) + "% (ao balanço anterior)"
-    if au7d_casos:
-        msgcasos = msgcasos + " " + '{:.2f}'.format(au7d_casos) + "% (em uma semana)"
-    if au30d_casos:
-        msgcasos = msgcasos + " " + '{:.2f}'.format(au30d_casos) + "% (em 30 dias)"
-    print(msgcasos)
-    print("MORTOS:")
-    msgmortes = ""
-    msgmortes = msgmortes + "\tTotal: " + '{:d}'.format(totalmortos)
-    msgmortes = msgmortes + "\tNovos: " + '{:d}'.format(novasmortes)
-    msgmortes = msgmortes + "\tMédia móvel: " + '{:.2f}'.format(mm_mortos)
-    msgmortes = msgmortes + "\n\tAumento de casos: " + '{:.2f}'.format(txa_mortes) + "% (ao balanço anterior)"
-    if au7d_mortos:
-        msgmortes = msgmortes + " " + '{:.2f}'.format(au7d_mortos) + "% (em uma semana)"
-    if au30d_mortos:
-        msgmortes = msgmortes + " " + '{:.2f}'.format(au30d_mortos) + "% (em 30 dias)"
-    print(msgmortes)
-    if totalrecuperados:
-        print("RECUPERADOS:")
-        msgrecup = ""
-        msgrecup = msgrecup + "\tTotal: " + '{:d}'.format(totalrecuperados)
-        msgrecup = msgrecup + "\tNovos: " + '{:d}'.format(novosrecuperados)
-        msgrecup = msgrecup + "\tMédia móvel: " + '{:.2f}'.format(mm_recuperados)
-        msgrecup = msgrecup + "\n\tAumento de casos: " + '{:.2f}'.format(txa_recuperados) + "% (ao balanço anterior)"
-        if au7d_recuperados:
-            msgrecup = msgrecup + " " + '{:.2f}'.format(au7d_recuperados) + "% (em uma semana)"
-        if au30d_recuperados:
-            msgrecup = msgrecup + " " + '{:.2f}'.format(au30d_recuperados) + "% (em 30 dias)"
-        print(msgrecup)
-    print("Outros dados")
-    odata = ""
-    if tx_let:
-        odata = odata + "\tTaxa de letalidade: " + '{:.2f}'.format(float(tx_let)) + "%"
-    if tx_inc:
-        odata = odata + "\tTaxa de incidência: " + '{:.2f}'.format(float(tx_inc)) + "/100.000 hab"
-    if tx_ocup:
-        odata = odata + "\tTaxa de ocupação: " + '{:.2f}'.format(float(tx_ocup)) + "%"
-    if tx_uti:
-        odata = odata + "\tTaxa de ocupação de UTI: " + '{:.2f}'.format(float(tx_uti)) + "%"
-    if tx_isolam:
-        odata = odata + "\n\tTaxa de isolamento: " + '{:.2f}'.format(float(tx_isolam)) + "%"
-    if tx_recup:
-        odata = odata + "\tÍndice de recuperados: " + '{:.2f}'.format(float(tx_recup)) + "%"
-    print(odata)
+    try: 
+        #print(gtc)
+        totalcasos = totalmortos = totalrecuperados = 0
+        if validanumero(gtc[0]):
+            totalcasos = int(gtc[0])
+        if validanumero(gtc[1]):
+            totalmortos = int(gtc[1])
+        if validanumero(gtc[2]): 
+            totalrecuperados = int(gtc[2])
+        
+        sqldadosdiae = "SELECT novoscasos, novasmortes, novosrecuperados, aumentocasos, aumentomortes, aumentorecuperados, registrodiario, txocupacao, txuti, txisolamento, txincidencia, txletalidade, txrecuperados FROM balancos WHERE iddistrito = ? AND data = ?"
+        cur.execute(sqldadosdiae,(iddist,data,))
+        dcd = cur.fetchone()
+        novoscasos = novasmortes = novosrecuperados = 0
+        txa_casos = txa_mortes = txa_recuperados = tx_ocup = tx_uti = tx_isolam = tx_inc = tx_let = tx_recup = 0.0
+        regsitrodiario = ""
+        #print(dcd)
+        if validanumero(dcd[0]):
+            novoscasos = dcd[0]
+        if validanumero(dcd[1]):
+            novasmortes = dcd[1]
+        if validanumero(dcd[2]):
+            novosrecuperados = dcd[2]
+        if validanumero(dcd[3]):
+            txa_casos = float(dcd[3])*100
+        if validanumero(dcd[4]):
+            txa_mortes = float(dcd[4])*100
+        if validanumero(dcd[5]):
+            txa_recuperados = float(dcd[5])*100
+        if validanumero(dcd[6]):
+            regsitrodiario = dcd[6]
+        if validanumero(dcd[7]):
+            tx_ocup = float(dcd[7])*100
+        if validanumero(dcd[8]):
+            tx_uti = float(dcd[8])*100
+        if validanumero(dcd[9]):
+            tx_isolam = float(dcd[9])*100
+        if validanumero(dcd[10]):
+            tx_inc = float(dcd[10])
+        if validanumero(dcd[11]):
+            tx_let = float(dcd[11])*100
+        if validanumero(dcd[12]):
+            tx_recup = float(dcd[12])*100
+        memovlocal = mediamovel(iddist,data)
+        mm_casos = float(memovlocal['casos'])
+        mm_mortos = float(memovlocal['mortes'])
+        mm_recuperados = float(memovlocal['recuperados'])
+        mm_txocupacao = float(memovlocal['txocupacao'])
+        mm_txuti = float(memovlocal['txuti'])
+        mm_txisolamento = float(memovlocal['txisolamento'])
+        mm_letalidade = float(memovlocal['txletalidade'])
+        memovlocal15 = mediamovel(iddist,diaanterior(data,15))
+        # print(diaanterior(data,15))
+        mm_casos15 = float(memovlocal15['casos'])
+        mm_mortos15 = float(memovlocal15['mortes'])
+        mm_recuperados15 = float(memovlocal15['recuperados'])
+        mm_txisolamento15 = float(memovlocal15['txisolamento'])
+        txcrsemloc = txcrescimento(iddist,data,7)
+        au7d_casos = float(txcrsemloc['aumentocasos'])*100
+        au7d_mortos = float(txcrsemloc['aumentomortes'])*100
+        au7d_recuperados = float(txcrsemloc['aumentorecuperados'])*100
+        txcrmesloc = txcrescimento(iddist,data,30)
+        au30d_casos = float(txcrmesloc['aumentocasos'])*100
+        au30d_mortos = float(txcrmesloc['aumentomortes'])*100
+        au30d_recuperados = float(txcrmesloc['aumentorecuperados'])*100
+        varmm_casos = (mm_casos/mm_casos15) - 1.0 if mm_casos15 != 0.0 else 0
+        varmm_mortos = (mm_mortos/mm_mortos15) - 1.0 if mm_mortos15 != 0.0 else 0
+        varmm_recuperados = (mm_recuperados/mm_recuperados15) - 1.0 if mm_recuperados15 != 0.0 else 0
+        varmm_isolamento = (mm_txisolamento/mm_txisolamento15) - 1.0 if mm_txisolamento15 != 0.0 else 0
+        
+        #if regsitrodiario:
+        #    print("Estes dados representam informações recolhidas em um intervalo de um dia (ou 24 horas).")
+        #else:
+        #    print("Estes dados representam informações recolhidas em um intervalo maior de um dia (mais de 24 horas).\n\tIsto pode representar um valor maior que a média, interferindo nas informações calculadas.")
+        
+        print("CASOS:")
+        msgcasos = ""
+        msgcasos = msgcasos + '\tTotal: {:n}'.format(totalcasos)
+        msgcasos = msgcasos + '\tNovos: {:n}'.format(novoscasos)
+        msgcasos = msgcasos + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_casos) + ', 15 dias antes: {:n}%'.format(mm_casos15) + ', Variação de casos: {:.2f}%'.format(varmm_casos*100) + ', Tendência: ' + statusav(varmm_casos)
+        msgcasos = msgcasos + "\n\tAumento de casos: " + '{:.1n}% (ao balanço anterior)'.format(txa_casos)
+        if au7d_casos:
+            msgcasos = msgcasos + ' {:n}%  (em uma semana)'.format(au7d_casos)
+        if au30d_casos:
+            msgcasos = msgcasos + ' {:n}%  (em 30 dias)'.format(au30d_casos)
+        print(msgcasos)
+        print("MORTOS:")
+        msgmortes = ""
+        msgmortes = msgmortes + '\tTotal: {:n}'.format(totalmortos)
+        msgmortes = msgmortes + '\tNovos: {:n}'.format(novasmortes)
+        msgmortes = msgmortes + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_mortos) + ', 15 dias antes: {:n}%'.format(mm_mortos15) + ', Variação de mortos: {:.2f}%'.format(varmm_mortos*100) + ', Tendência: ' + statusav(varmm_mortos)
+        msgmortes = msgmortes + '\n\tAumento de casos: {:.1n}% (ao balanço anterior)'.format(txa_mortes)
+        if au7d_mortos:
+            msgmortes = msgmortes + ' {:n}%  (em uma semana)'.format(au7d_mortos)
+        if au30d_mortos:
+            msgmortes = msgmortes + ' {:n}% (em 30 dias)'.format(au30d_mortos)
+        print(msgmortes)
+        if totalrecuperados:
+            print("RECUPERADOS:")
+            msgrecup = ""
+            msgrecup = msgrecup + '\tTotal: {:n}'.format(totalrecuperados)
+            msgrecup = msgrecup + '\tNovos: {:n}'.format(novosrecuperados)
+            msgrecup = msgrecup + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_recuperados) + ', 15 dias antes: {:n}%'.format(mm_recuperados15) + ', Variação de recuperados: {:.2f}%'.format(varmm_recuperados*100) + ', Tendência: ' + statusav(varmm_recuperados)
+            msgrecup = msgrecup + '\n\tAumento de casos: {:.1n}% (ao balanço anterior)'.format(txa_recuperados)
+            if au7d_recuperados:
+                msgrecup = msgrecup + ' {:n}%  (em uma semana)'.format(au7d_recuperados)
+            if au30d_recuperados:
+                msgrecup = msgrecup + ' {:n}%  (em 30 dias)'.format(au30d_recuperados)
+            print(msgrecup)
+        
+        print("Outros dados:")
+        odata = ""
+        if tx_let:
+            odata = odata + '\tTaxa de letalidade: {:n}%'.format(float(tx_let))
+        if tx_inc:
+            odata = odata + '\tTaxa de incidência: {:n} /100.000 hab'.format(float(tx_inc))
+        if tx_ocup:
+            odata = odata + '\n\tTaxa de ocupação: {:n}%'.format(float(tx_ocup)) + ' (Média Movel - 7 dias: {:n}%)'.format(float(mm_txocupacao*100))
+        if tx_uti:
+            odata = odata + '\n\tTaxa de ocupação de UTI: {:n}%'.format(float(tx_uti)) + '(Média Movel - 7 dias: {:n}%)'.format(float(mm_txuti*100))
+        if tx_isolam:
+            odata = odata + '\n\tTaxa de isolamento: {:n}%'.format(float(tx_isolam))
+            odata = odata + '\tMédia móvel (7 registros anteriores): {:n}'.format(mm_txisolamento*100) + ', 15 dias antes: {:n}%'.format(mm_txisolamento15*100) + ', Variação da Taxa de Isolamento: {:.2f}%'.format(varmm_isolamento*100) + ', Tendência: ' + statusav(varmm_isolamento)
+        if tx_recup:
+            odata = odata + '\n\tÍndice de recuperados: {:n}%'.format(float(tx_recup))
+        print(odata)
+    except TypeError as e:
+        print("Não localizados dados para essa data.")
     pass
 
 def balanco(idlocal,dataref=hoje):
