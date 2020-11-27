@@ -108,10 +108,10 @@ def regcaso(data,iddistrito):
             print("Informação inválida. Um número deve ser fornecido.")
             casosap = (input("TOTAL DE CASOS DO DIA: Quantos casos o distrito tem até hoje? (padrão quantidade atual de casos: %s) " % (totalcasos)) or totalcasos)
         casosapurados = int(casosap)
-        mortosap = (input("TOTAL DE ÓBITOS DO DIA: Quantos óbitos o distrito tem até hoje? (padrão quantidade atual de mortes: %s) " % (totalmortes)) or totalmortes)
+        mortosap = (input("TOTAL DE ÓBITOS DO DIA: Quantos óbitos o distrito tem até hoje? (padrão quantidade atual de óbitos: %s) " % (totalmortes)) or totalmortes)
         while not validanumero(mortosap):
             print("Informação inválida. Um número deve ser fornecido.")
-            mortosap = (input("TOTAL DE ÓBITOS DO DIA: Quantos óbitos o distrito tem até hoje? (padrão quantidade atual de mortes: %s) " % (totalmortes)) or totalmortes)
+            mortosap = (input("TOTAL DE ÓBITOS DO DIA: Quantos óbitos o distrito tem até hoje? (padrão quantidade atual de óbitos: %s) " % (totalmortes)) or totalmortes)
         mortosapurados = int(mortosap)
         novoscasos = casosapurados - totalcasos
         novasmortes = mortosapurados - totalmortes
@@ -125,7 +125,7 @@ def regcaso(data,iddistrito):
             txcm = 1
             
         txlet = mortosapurados/casosapurados
-        print("Confira os dados: \n\tDistrito: %s\n\tData: %s\n\tNovos casos: %s\n\tNovas mortes: %s\n\tÍndice de crescimento de casos: %s\n\tÍndice de crescimento de mortos: %s\n\tTaxa de letalidade: %s\n\t%s" % (nomedist, data, novoscasos, novasmortes, txcc, txcm, txlet, regmsg))
+        print("Confira os dados: \n\tDistrito: %s\n\tData: %s\n\tNovos casos: %s\n\tNovos óbitos: %s\n\tÍndice de crescimento de casos: %s\n\tÍndice de crescimento de óbitos: %s\n\tTaxa de letalidade: %s\n\t%s" % (nomedist, data, novoscasos, novasmortes, txcc, txcm, txlet, regmsg))
         sqlrc = "INSERT INTO balancos (iddistrito, data, novoscasos, novasmortes, aumentocasos, aumentomortes, txletalidade, registrodiario) VALUES (?,?,?,?,?,?,?,?)"
         confirmc = None
         while confirmc not in ("s", "n"):
