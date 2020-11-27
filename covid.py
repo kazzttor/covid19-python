@@ -9,6 +9,7 @@ import locale
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 import sqlite3
 from sqlite3 import Error
+import sys
 db_file = 'covid.db3'
 try:
         conex = sqlite3.connect(db_file)
@@ -26,6 +27,8 @@ parser.add_argument("-v", "--novodistrito", metavar="idlocal", help="cadastra um
 parser.add_argument("-r", "--registra", metavar="idlocal", help="cadastra os dados do balanço para uma cidade existente.", action='store')
 parser.add_argument("-b", "--balanco", metavar="idlocal", help="exibe os dados do balanço para uma cidade existente.", action='store')
 parser.add_argument("-d", "--data", metavar="data", help="(opera com as opções -b e -r) define a data de referência. Omitido -b assume a data atual, -r será solicitado. ", action='store')
+parser.add_argument("-w", "--web", help="gera o relatório no formato html.", action='store_true')
+
 args = parser.parse_args()
 
 hoje = datetime.now().strftime("%Y-%m-%d")
@@ -105,10 +108,10 @@ def regcaso(data,iddistrito):
             print("Informação inválida. Um número deve ser fornecido.")
             casosap = (input("TOTAL DE CASOS DO DIA: Quantos casos o distrito tem até hoje? (padrão quantidade atual de casos: %s) " % (totalcasos)) or totalcasos)
         casosapurados = int(casosap)
-        mortosap = (input("TOTAL DE MORTOS DO DIA: Quantos mortos o distrito tem até hoje? (padrão quantidade atual de mortes: %s) " % (totalmortes)) or totalmortes)
+        mortosap = (input("TOTAL DE ÓBITOS DO DIA: Quantos óbitos o distrito tem até hoje? (padrão quantidade atual de mortes: %s) " % (totalmortes)) or totalmortes)
         while not validanumero(mortosap):
             print("Informação inválida. Um número deve ser fornecido.")
-            mortosap = (input("TOTAL DE MORTOS DO DIA: Quantos mortos o distrito tem até hoje? (padrão quantidade atual de mortes: %s) " % (totalmortes)) or totalmortes)
+            mortosap = (input("TOTAL DE ÓBITOS DO DIA: Quantos óbitos o distrito tem até hoje? (padrão quantidade atual de mortes: %s) " % (totalmortes)) or totalmortes)
         mortosapurados = int(mortosap)
         novoscasos = casosapurados - totalcasos
         novasmortes = mortosapurados - totalmortes
@@ -122,7 +125,7 @@ def regcaso(data,iddistrito):
             txcm = 1
             
         txlet = mortosapurados/casosapurados
-        print("Confira os dados: \n\tDistrito: %s\n\tData: %s\n\tNovos casos: %s\n\tNovasmortes: %s\n\tÍndice de crescimento de casos: %s\n\tÍndice de crescimento de mortos: %s\n\tTaxa de letalidade: %s\n\t%s" % (nomedist, data, novoscasos, novasmortes, txcc, txcm, txlet, regmsg))
+        print("Confira os dados: \n\tDistrito: %s\n\tData: %s\n\tNovos casos: %s\n\tNovas mortes: %s\n\tÍndice de crescimento de casos: %s\n\tÍndice de crescimento de mortos: %s\n\tTaxa de letalidade: %s\n\t%s" % (nomedist, data, novoscasos, novasmortes, txcc, txcm, txlet, regmsg))
         sqlrc = "INSERT INTO balancos (iddistrito, data, novoscasos, novasmortes, aumentocasos, aumentomortes, txletalidade, registrodiario) VALUES (?,?,?,?,?,?,?,?)"
         confirmc = None
         while confirmc not in ("s", "n"):
@@ -214,7 +217,7 @@ def consolidacaso(data,idlocal):
         txisoc = float(txisocap)/100
         print("Verifique os dados:")
         print("CASOS:\tTotais: %s\tNesta data: %s\tAumento: %s \tIncidência: %s " % (totalcasosc, casosdia, txccc, txinc))
-        print("MORTOS:\tTotais: %s\tNesta data: %s\tAumento: %s \tLetalidade %s " % (totalmortesc, mortosdia, txcmc, txletc))
+        print("ÓBITOS:\tTotais: %s\tNesta data: %s\tAumento: %s \tLetalidade %s " % (totalmortesc, mortosdia, txcmc, txletc))
         print("RECUPERADOS:\tTotais: %s\tNesta data: %s\tAumento: %s \tÍndice %s " % (recuperadosapurados, recuperadosdia, txcrc, txrecupc))
         print("OUTROS DADOS:\tTaxa de ocupação: %s\tTaxa de UTI: %s\tTaxa de Isolamento: %s " % (txoclc, txocutc, txisoc))
         sqlrcc = "INSERT INTO balancos (iddistrito, data, novoscasos, novasmortes, aumentocasos, aumentomortes, registrodiario, txletalidade, novosrecuperados, aumentorecuperados, txocupacao, txuti, txisolamento, txincidencia, txrecuperados) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
@@ -585,19 +588,19 @@ def exibeestatistica(iddist,data):
         msgcasos = ""
         msgcasos = msgcasos + '\tTotal: {:n}'.format(totalcasos)
         msgcasos = msgcasos + '\tNovos: {:n}'.format(novoscasos)
-        msgcasos = msgcasos + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_casos) + ', 15 dias antes: {:n}%'.format(mm_casos15) + ', Variação de casos: {:.2f}%'.format(varmm_casos*100) + ', Tendência: ' + statusav(varmm_casos)
+        msgcasos = msgcasos + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_casos) + ', 15 dias antes: {:n}'.format(mm_casos15) + ', Variação de casos: {:.2f}%'.format(varmm_casos*100) + ', Tendência: ' + statusav(varmm_casos)
         msgcasos = msgcasos + "\n\tAumento de casos: " + '{:.1n}% (ao balanço anterior)'.format(txa_casos)
         if au7d_casos:
             msgcasos = msgcasos + ' {:n}%  (em uma semana)'.format(au7d_casos)
         if au30d_casos:
             msgcasos = msgcasos + ' {:n}%  (em 30 dias)'.format(au30d_casos)
         print(msgcasos)
-        print("MORTOS:")
+        print("ÓBITOS:")
         msgmortes = ""
         msgmortes = msgmortes + '\tTotal: {:n}'.format(totalmortos)
         msgmortes = msgmortes + '\tNovos: {:n}'.format(novasmortes)
-        msgmortes = msgmortes + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_mortos) + ', 15 dias antes: {:n}%'.format(mm_mortos15) + ', Variação de mortos: {:.2f}%'.format(varmm_mortos*100) + ', Tendência: ' + statusav(varmm_mortos)
-        msgmortes = msgmortes + '\n\tAumento de casos: {:.1n}% (ao balanço anterior)'.format(txa_mortes)
+        msgmortes = msgmortes + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_mortos) + ', 15 dias antes: {:n}'.format(mm_mortos15) + ', Variação de óbitos: {:.2f}%'.format(varmm_mortos*100) + ', Tendência: ' + statusav(varmm_mortos)
+        msgmortes = msgmortes + '\n\tAumento de óbitos: {:.1n}% (ao balanço anterior)'.format(txa_mortes)
         if au7d_mortos:
             msgmortes = msgmortes + ' {:n}%  (em uma semana)'.format(au7d_mortos)
         if au30d_mortos:
@@ -608,8 +611,8 @@ def exibeestatistica(iddist,data):
             msgrecup = ""
             msgrecup = msgrecup + '\tTotal: {:n}'.format(totalrecuperados)
             msgrecup = msgrecup + '\tNovos: {:n}'.format(novosrecuperados)
-            msgrecup = msgrecup + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_recuperados) + ', 15 dias antes: {:n}%'.format(mm_recuperados15) + ', Variação de recuperados: {:.2f}%'.format(varmm_recuperados*100) + ', Tendência: ' + statusav(varmm_recuperados)
-            msgrecup = msgrecup + '\n\tAumento de casos: {:.1n}% (ao balanço anterior)'.format(txa_recuperados)
+            msgrecup = msgrecup + '\n\tMédia móvel (7 registros anteriores): {:n}'.format(mm_recuperados) + ', 15 dias antes: {:n}'.format(mm_recuperados15) + ', Variação de recuperados: {:.2f}%'.format(varmm_recuperados*100) + ', Tendência: ' + statusav(varmm_recuperados)
+            msgrecup = msgrecup + '\n\tAumento de recuperados: {:.1n}% (ao balanço anterior)'.format(txa_recuperados)
             if au7d_recuperados:
                 msgrecup = msgrecup + ' {:n}%  (em uma semana)'.format(au7d_recuperados)
             if au30d_recuperados:
@@ -633,7 +636,7 @@ def exibeestatistica(iddist,data):
             odata = odata + '\n\tÍndice de recuperados: {:n}%'.format(float(tx_recup))
         print(odata)
     except TypeError as e:
-        print("Não localizados dados para essa data.")
+        sys.exit("Não localizados dados para essa data.")
     pass
 
 def balanco(idlocal,dataref=hoje):
