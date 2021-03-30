@@ -24,11 +24,14 @@ Existe algoritmo utiliza a versão 3 da linguagem Python, e requer as biblioteca
 
 - [x] Banco de dados
 - [x] Cadastro de locais e distritos
-- [x] Cadastro dos dados da epidemia
-- [X] Exibição do balanço (_atualizado_)
-- [X] Cálculo da média móvel (_atualizado com análise_)
+- [x] Cadastro dos dados da epidemia (_incluindo vacinação - NOVO_)
+- [X] Exibição do balanço
+- [X] Cálculo da média móvel e análise da média móvel.
 - [X] Balanço em uma determinada data e definiçao da data de registro já na linha de comando
-- [ ] Interface Web (em PHP)
+- [X] Exclusão de balanço de uma determinada data em linha de comando
+- [X] Atualizção de dados (taxa de ocupação de leitos, UTI, isolamento e vacinação) do local em linha de comando
+- [ ] Interface Web (com geração de arquivos html)
+- [ ] Publicação dos dados na internet via Tumblr (_experimental_)
 
 ## Para obter 
 
