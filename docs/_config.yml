@@ -16,8 +16,9 @@
 title: Covid-19 Python
 email: kazzttor@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
-Um sistema desenvolvido em python para tabular e realizar cálculos em informações 
-de saúde sobre o Covid-19. Desenvolvido em python e utiliza base de dados SQLite.
+  Um sistema desenvolvido em python para tabular e realizar 
+  cálculos em informações de saúde sobre o Covid-19. 
+  Desenvolvido em python e utiliza base de dados SQLite.
 baseurl: "/covid19-python" # the subpath of your site, e.g. /blog
 url: "https://kazzttor.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: kazzttor
