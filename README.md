@@ -12,9 +12,9 @@ A análise da média móvel consiste em comparar a média móvel com a média de
 As estatísticas estão disponíveis para:
 
 - **Distritos**: taxa de letalidade, crescimento de casos e mortes em relação ao dia anterior com análise da média móvel, crescimento dos casos e mortes em relação a semana anterior e ao mês anterior.
-- **Locais**: todas as estatísticas. Taxa de letalidade, taxa de incidência, crescimento de casos, mortes e recuperados em relação ao dia anterior com análise da média móvel, crescimento dos casos, mortes e recuperados em relação a semana anterior e ao mês anterior, taxa de ocupação de UTI, taxa de ocupação de leitos, taxa de incidência, taxa de isolamento com análise da média móvel.
+- **Locais**: todas as estatísticas. Taxa de letalidade, taxa de incidência, crescimento de casos, mortes e recuperados em relação ao dia anterior com análise da média móvel, crescimento dos casos, mortes e recuperados em relação a semana anterior e ao mês anterior, vacinados com a primeira e segunda doses da vacina, aumento e análise da média móvel, além de determinar qual a proporção da população foi imunizada, taxa de ocupação de UTI, taxa de ocupação de leitos, taxa de incidência, taxa de isolamento com análise da média móvel.
 
-A análise da média móvel da taxa de isolamento é importante, pois há uma correlação inversamente proporcional entre isolamento e aumento de casos.
+A análise da média móvel da taxa de isolamento é importante, pois pode haver uma correlação inversamente proporcional entre isolamento e aumento de casos.
 
 Este sistema tem como finalidade a análise de informações externas, além de permitir uma análise mais segmentada por bairro, em uma cidade. Pode-se por exemplo, saber como anda o espalhamento da pandemia, e traçar por meio de modelos estatísticos uma projeção da curva de casos. Também pode permitir que seja determinado se um determinado local ainda está em uma curva ascendente de casos, descendente, ou platô, quando se atingiu pico de casos e não há mais crescimento ou redução.
 
@@ -30,7 +30,7 @@ Existe algoritmo utiliza a versão 3 da linguagem Python, e requer as biblioteca
 - [X] Balanço em uma determinada data e definiçao da data de registro já na linha de comando
 - [X] Exclusão de balanço de uma determinada data em linha de comando
 - [X] Atualizção de dados (taxa de ocupação de leitos, UTI, isolamento e vacinação) do local em linha de comando
-- [ ] Interface Web (com geração de arquivos html)
+- [ ] Interface Web (com geração de arquivos html ou uma versão escrita em PHP que permita o registro)
 - [ ] Publicação dos dados na internet via Tumblr (_experimental_)
 
 ## Para obter 
