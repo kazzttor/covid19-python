@@ -2,7 +2,8 @@
 # Feel free to add content and custom Front Matter to this file.
 # To modify the layout, see https://jekyllrb.com/docs/themes/#overriding-theme-defaults
 
-layout: home
+layout: default
+title: Home
 ---
 # Covid-19 (sistema de acompanhamento em Python)
 O sistema de acompanhamento para a covid-19, escrito em Python, é um algoritmo que registra em banco de dados as informações fornecidas pelas autoridades de saúde, ou informações internas de um determinado local, com a opção de analisar essas informações matematicamente.
