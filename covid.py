@@ -522,7 +522,7 @@ def txcrescimento(iddistrito,dataref,dias):
         if dtz[4]:
             vacinados1zero = float(dtz[4])
         if dtz[5]:
-            vacinados1zero = float(dtz[5])         
+            vacinados2zero = float(dtz[5])         
     gda = cur.execute(sqlda,(iddistrito,dataref,))
     for dta in gda:
         if dta[1]:
@@ -540,7 +540,7 @@ def txcrescimento(iddistrito,dataref,dias):
     c['aumentomortes'] = (mortesatual/morteszero) - 1.0 if morteszero != 0 else 0
     c['aumentorecuperados'] = (recuperadosatual/recuperadoszero) - 1.0 if recuperadoszero != 0 else 0
     c['aumentovacinados1'] = (vacinados1atual/vacinados1zero) - 1.0 if vacinados1zero != 0 else 0
-    c['aumentovacinados2'] = (vacinados2atual/vacinados1zero) - 1.0 if vacinados2zero != 0 else 0
+    c['aumentovacinados2'] = (vacinados2atual/vacinados2zero) - 1.0 if vacinados2zero != 0 else 0
     return c
 
 def exibeestatistica(iddist,data,web="n"):
@@ -674,9 +674,9 @@ def exibeestatistica(iddist,data,web="n"):
                 totvacina = vacinados(iddist,diaontem)
                 vacina1dant = vacina2dant = 0.000000000001
                 if totvacina['dose1'] is not None:
-                    vacina1dant = vacina1dant + totvacina['dose1']
+                    vacina1dant = vacina1dant + float(totvacina['dose1'])
                 if totvacina['dose2'] is not None:
-                    vacina2dant = vacina2dant + totvacina['dose1']
+                    vacina2dant = vacina2dant + float(totvacina['dose2'])
                 txa_vacinados1 = (totalvacinados1/vacina1dant) - 1.0
                 txa_vacinados2 = (totalvacinados2/vacina2dant) - 1.0          
                 msgvac = ""
@@ -690,7 +690,7 @@ def exibeestatistica(iddist,data,web="n"):
                     msgvac = msgvac + ' {:n}%  (em uma semana)'.format(au7d_vacinados1)
                 if au30d_vacinados1:
                     msgvac = msgvac + ' {:n}%  (em 30 dias)'.format(au30d_vacinados1)
-                msgvac = msgvac + '\n\tAumento de vacinados: 2ª dose {:.1n}% (ao balanço anterior)'.format(txa_vacinados2)
+                msgvac = msgvac + '\n\tAumento de vacinados: 2ª dose {:n}% (ao balanço anterior)'.format(txa_vacinados2)
                 if au7d_vacinados2:
                     msgvac = msgvac + ' {:n}%  (em uma semana)'.format(au7d_vacinados2)
                 if au30d_vacinados2:
@@ -711,7 +711,7 @@ def exibeestatistica(iddist,data,web="n"):
                 odata = odata + '\tMédia móvel (7 registros anteriores): {:n}'.format(mm_txisolamento*100) + ', 15 dias antes: {:n}%'.format(mm_txisolamento15*100) + ', Variação da Taxa de Isolamento: {:.2f}%'.format(varmm_isolamento*100) + ', Tendência: ' + statusav(varmm_isolamento)
             if tx_recup:
                 odata = odata + '\n\tÍndice de recuperados: {:n}%'.format(float(tx_recup))
-                odata = odata + '\t(Casos Ativos: {:n})'.format((totalcasos-totalrecuperados))
+                odata = odata + '\t(Casos Ativos: {:n})'.format((totalcasos-(totalrecuperados+totalmortos)))
             print(odata)
         else:
             esqueletoweb = ""
