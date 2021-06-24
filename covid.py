@@ -4,6 +4,7 @@
 # encoding=utf8
 
 from argparse import ArgumentParser
+import datetime
 from datetime import datetime, date, time, timedelta
 import locale
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
@@ -168,8 +169,8 @@ def consolidacaso(data,idlocal):
     if iddistpai:
         sqlpopulacao = "SELECT populacao FROM locais WHERE idlocal = ?"
         sqlcontdia = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND data = ? AND registropai IS NULL GROUP BY idlocal"
-        sqlconttot = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND registropai IS NULL GROUP BY idlocal"
-        sqlrecup = "SELECT sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as vacinados1, sum(vacinadose2) as vacinados2 FROM balancos WHERE iddistrito = ? GROUP BY iddistrito"
+        sqlconttot = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND registropai = ? GROUP BY idlocal"
+        sqlrecup = "SELECT sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as vacinados1, sum(vacinadose2) as vacinados2 FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND registropai = ? GROUP BY idlocal"
         ontem = diaanterior(data)
         sqldiant = "SELECT idbalanco FROM balancos WHERE iddistrito = ? AND data = ?"
         diario = None
@@ -186,20 +187,31 @@ def consolidacaso(data,idlocal):
         for rcd in gcd:
             casosdia = rcd[0]
             mortosdia = rcd[1]
-        gct = cur.execute(sqlconttot,(idlocal,))
+        gct = cur.execute(sqlconttot,(idlocal,'S'))
         for rct in gct:
-            totalcasosc = rct[0]
-            totalmortesc = rct[1]
+            totalcasosap = rct[0] + casosdia
+            totalmortesap = rct[1] + mortosdia
+        totalcasosaps = (input("TOTAL DE CASOS: Quantos casos o local tem até hoje? (padrão quantidade atual de casos: %s) " % (totalcasosap)) or totalcasosap)
+        while not validanumero(totalcasosaps):
+            print("Informação inválida. Um número deve ser fornecido.")
+            totalcasosaps = (input("TOTAL DE CASOS: Quantos casos o local tem até hoje? (padrão quantidade atual de casos: %s) " % (totalcasosap)) or totalcasosap)
+        totalcasosc = int(totalcasosaps)
+        totalmortesaps = (input("TOTAL DE ÓBITOS: Quantos óbitos o local tem até hoje? (padrão quantidade atual de casos: %s) " % (totalmortesap)) or totalmortesap)
+        while not validanumero(totalcasosc):
+            print("Informação inválida. Um número deve ser fornecido.")
+            totalmortesaps = (input("TOTAL DE ÓBITOS: Quantos óbitos o local tem até hoje? (padrão quantidade atual de casos: %s) " % (totalmortesap)) or totalmortesap)
+        totalmortesc = int(totalmortesaps)
         gcp = cur.execute(sqlpopulacao,(idlocal,))
         for rcp in gcp:
             populacao = rcp[0]
-        gtr = cur.execute(sqlrecup,(iddistpai,))
-        totalrecuperadosc = totalvacinados1 = totalvacinados2 = 0
+        gtr = cur.execute(sqlrecup,(iddistpai,'S'))
+        totalrecuperadosc = totalvacinados1c = totalvacinados2c = 0
         for rtr in gtr:
             totalrecuperadosc = rtr[0]
             totalvacinados1c = rtr[1]
             totalvacinados2c = rtr[2]
-
+        casosdia = casosdia + (totalcasosc-totalcasosap)
+        mortosdia = mortosdia + (totalmortesc-totalmortesap)
         if (totalcasosc-casosdia) != 0:
             txccc = (totalcasosc/(totalcasosc-casosdia)) -1
         else:
@@ -384,8 +396,7 @@ def novodistrito(idlocal):
     if idloc:
         print("== Cadastro de novo distrito ==\n\nVamos cadastrar um novo distrito, que é uma subdivisão de um local já cadastrado.\nPode cadastrar quantos quiser e será usado para um balanço específico.\nPara cadastrar é preciso responder a algumas perguntas, como o nome do distrito, população, tipo de local, e a data do início das observações.")
         print("Cadastrando novo distrito para o seguinte local: ",nomelocal)
-        nomedistrito = input("Digite o nome do novo distrito: ")
-        tiposd = ['B','C','E','P','N','M','O']
+        tiposd = ['B','C','E','P','N','M','O','R']
         tiposdnome = {
             "B": "Bairro",
             "C": "Cidade",
@@ -394,17 +405,23 @@ def novodistrito(idlocal):
             "N": "Continente",
             "M": "Mundo",
             "O": "Outro",
+            "R": "Não Identificado"
         }
-        print("Escolha o tipo de distrito:\n\tB - para bairro\n\tC - para cidade\n\tE - para estado\n\tP - para país\n\tN - para continente\n\tC - para mundo\n\tO - para outro")
+        print("Escolha o tipo de distrito:\n\tB - para bairro\n\tC - para cidade\n\tE - para estado\n\tP - para país\n\tN - para continente\n\tC - para mundo\n\tO - para outro\n\tR - para não identificado")
         tipodistrito = input("Digite a letra correspondente ao tipo do novo distrito: ").upper()        
         while tipodistrito not in tiposd:
-            print("Informação inválida: digite novamente.\nEscolha o tipo de distrito:\n\tB - para bairro\n\tC - para cidade\n\tE - para estado\n\tP - para país\n\tN - para continente\n\tC - para mundo\n\tO - para outro")
+            print("Informação inválida: digite novamente.\nEscolha o tipo de distrito:\n\tB - para bairro\n\tC - para cidade\n\tE - para estado\n\tP - para país\n\tN - para continente\n\tC - para mundo\n\tO - para outro\n\tR - para não identificado")
             tipodistrito = input("Digite a letra correspondente ao tipo do novo distrito: ").upper()
         datainiciod = (input("Digite da data de início das medições (formato %s - padrão data inicio do local): " % (datainicio)) or datainicio)
         while not validadata(datainiciod):
             print("Data informada inválida.")
             datainiciod = (input("Digite da data de início das medições (formato %s - padrão data inicio do local): " % (datainicio)) or datainicio)
         macrodistrito = (input("Macrodistrito - é um nome de um agrupamento de distritos, geralmente em regiões vizinhas (opcional): ") or None)
+        if (tipodistrito == "R"):
+            nomedistrito = nomelocal + " - não identificado"
+            print("Nome do distrito definido automaticamente: ",nomedistrito)
+        else:
+            nomedistrito = input("Digite o nome do novo distrito: ")
         print("Verifique os dados:")
         print("Nome do distrito: %s" % (nomedistrito))
         print("Tipo: %s - %s" % (tipodistrito, tiposdnome[tipodistrito]))
@@ -417,6 +434,7 @@ def novodistrito(idlocal):
         while cadastrad not in ("s", "n"):
             cadastrad = input("Está tudo certo? Confirma? (s/n) ").lower()
             if cadastrad == "s":
+                
                 sqlcd = "INSERT INTO distritos (idlocal,nomedistrito,tipodistrito,datainicio,macrodistrito) VALUES (?,?,?,?,?)"
                 cur.execute(sqlcd, (idloc,nomedistrito,tipodistrito,datainiciod,macrodistrito))
                 print(cur.lastrowid)
@@ -668,6 +686,16 @@ def exibeestatistica(iddist,data,web="n"):
                     msgrecup = msgrecup + ' {:n}%  (em 30 dias)'.format(au30d_recuperados)
                 print(msgrecup)
             if totalvacinados1 or totalvacinados2:
+                sqlpopulacao = "SELECT populacao FROM locais WHERE idlocal = ?"
+                cur.execute(sqlpopulacao,(iddist,))
+                popl = cur.fetchone()
+                populacao = popl[0]
+                diasrestdose1 = int((populacao-totalvacinados1)/mm_vacina1)
+                diasrestdose2 = int((populacao-totalvacinados2)/mm_vacina2)
+                prevfimdose1 = datetime.strptime(diaanterior(data,-(diasrestdose1)), '%Y-%m-%d')
+                prevfimdose2 = datetime.strptime(diaanterior(data,-(diasrestdose2)), '%Y-%m-%d')
+                prevfimdose1f = prevfimdose1.strftime('%d/%m/%Y')
+                prevfimdose2f = prevfimdose2.strftime('%d/%m/%Y')
                 print("VACINADOS:")
                 totalvacinados = totalvacinados1 + totalvacinados2
                 diaontem = diaanterior(data)
@@ -683,6 +711,7 @@ def exibeestatistica(iddist,data,web="n"):
                 msgvac = msgvac + '\tTotal: {:n} ({:n} com 1ª dose e {:n} com 2ª dose)'.format(totalvacinados, totalvacinados1, totalvacinados2)
                 msgvac = msgvac + '\tNovos: 1ª dose {:n}, 2ª dose {:n}'.format(novosvacinados1, novosvacinados2)
                 msgvac = msgvac + '\n\tProporção da população vacinada: ({:n}% com 1ª dose e {:n}% com 2ª dose)'.format(float(totvacina['txdose1'])*100, float(totvacina['txdose2'])*100)
+                msgvac = msgvac + '\n\tPrevisão para conclusão (baseado na média móvel atual de vacinações): 1ª dose - {}, 2ª dose - {}'.format(prevfimdose1f, prevfimdose2f)
                 msgvac = msgvac + '\n\tMédia móvel 1ª dose (7 registros anteriores): {:n}'.format(mm_vacina1) + ', 15 dias antes: {:n}'.format(mm_vacina115) + ', Variação de vacinados (1ª dose): {:.2f}%'.format(varmm_vacina1*100) + ', Tendência: ' + statusav(varmm_vacina1)
                 msgvac = msgvac + '\n\tMédia móvel 2ª dose (7 registros anteriores): {:n}'.format(mm_vacina2) + ', 15 dias antes: {:n}'.format(mm_vacina215) + ', Variação de vacinados (2ª dose): {:.2f}%'.format(varmm_vacina2*100) + ', Tendência: ' + statusav(varmm_vacina2)
                 msgvac = msgvac + '\n\tAumento de vacinados: 1ª dose {:.1n}% (ao balanço anterior)'.format(txa_vacinados1)
