@@ -34,7 +34,7 @@ parser.add_argument("-d", "--data", type=str, metavar="data", help="(opera com a
 parser.add_argument("--uti", type=float, metavar="taxadeuti", help="registra somente a taxa de uti para o local (requer -r e a data deve estar registrada).", nargs='?', const='pedir')
 parser.add_argument("--isolamento", type=float, metavar="taxadeisolamento", help="registra somente a taxa de uti para o local (requer -r e a data deve estar registrada).", nargs='?', const='pedir')
 parser.add_argument("--ocupacao", type=float, metavar="taxadeocupacao", help="registra somente a taxa de ocupação de leitos para o local (requer -r e a data deve estar registrada).", nargs='?', const='pedir')
-parser.add_argument("--vacinacao", type=int, metavar=("Vacinados1dose","Vacinados2dose"), help="registra somente a quantidade de pessoas vacinadas para o local (requer -r e -d definidos e é exigido dois valores: vacinados da 1ª dose e da 2ª dose).", nargs=2, action='store')
+parser.add_argument("--vacinacao", type=int, metavar=("Vacinados1dose","Vacinados2dose","vacinadosdoseunica"), help="registra somente a quantidade de pessoas vacinadas para o local (requer -r e -d definidos e é exigido dois valores: vacinados da 1ª dose e da 2ª dose).", nargs=3, action='store')
 args = parser.parse_args()
 
 hoje = datetime.now().strftime("%Y-%m-%d")
@@ -148,6 +148,15 @@ def regcaso(data,iddistrito):
                 print("Dados registrados.")
             elif confirmc == "n":
                 print("Dados não cadastrados.")
+                confrefaz = None
+                while confrefaz not in ("s", "n"):
+                    confrefaz = input("Refazer registro? (s/n) ").lower()
+                    if confrefaz == "s":
+                        regcaso(data,iddistrito)
+                    elif confrefaz == "n":
+                        print("Dados não cadastrados. Não haverá registro.")
+                    else:
+                        print("Resposta inválida. Responda s para sim, ou n para não")
             else:
                 print("Resposta inválida. Responda s para sim, ou n para não")
         
@@ -170,7 +179,7 @@ def consolidacaso(data,idlocal):
         sqlpopulacao = "SELECT populacao FROM locais WHERE idlocal = ?"
         sqlcontdia = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND data = ? AND registropai IS NULL GROUP BY idlocal"
         sqlconttot = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND registropai = ? GROUP BY idlocal"
-        sqlrecup = "SELECT sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as vacinados1, sum(vacinadose2) as vacinados2 FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND registropai = ? GROUP BY idlocal"
+        sqlrecup = "SELECT sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as vacinados1, sum(vacinadose2) as vacinados2, sum(vacinadoseunica) as vacinadosunica FROM balancos INNER JOIN distritos ON distritos.iddistrito = balancos.iddistrito WHERE idlocal = ? AND registropai = ? GROUP BY idlocal"
         ontem = diaanterior(data)
         sqldiant = "SELECT idbalanco FROM balancos WHERE iddistrito = ? AND data = ?"
         diario = None
@@ -205,11 +214,12 @@ def consolidacaso(data,idlocal):
         for rcp in gcp:
             populacao = rcp[0]
         gtr = cur.execute(sqlrecup,(iddistpai,'S'))
-        totalrecuperadosc = totalvacinados1c = totalvacinados2c = 0
+        totalrecuperadosc = totalvacinados1c = totalvacinados2c = totalvacinadosuc = 0
         for rtr in gtr:
             totalrecuperadosc = rtr[0]
             totalvacinados1c = rtr[1]
             totalvacinados2c = rtr[2]
+            totalvacinadosuc = rtr[3]
         casosdia = casosdia + (totalcasosc-totalcasosap)
         mortosdia = mortosdia + (totalmortesc-totalmortesap)
         if (totalcasosc-casosdia) != 0:
@@ -236,15 +246,21 @@ def consolidacaso(data,idlocal):
         vacinados1ap = (input("TOTAL PESSOAS VACINADAS (1ª DOSE): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (1ª dose): %s) " % (totalvacinados1c)) or totalvacinados1c)
         while not validanumero(vacinados1ap):
             print("Informação inválida. Um número deve ser fornecido.")
-            recuperadosap = (input("TOTAL PESSOAS VACINADAS (1ª DOSE): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (1ª dose): %s) " % (totalvacinados1c)) or totalvacinados1c)
+            vacinados1ap = (input("TOTAL PESSOAS VACINADAS (1ª DOSE): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (1ª dose): %s) " % (totalvacinados1c)) or totalvacinados1c)
         vacinados1apurados = int(vacinados1ap)
         vacinados1dia = vacinados1apurados - totalvacinados1c
         vacinados2ap = (input("TOTAL PESSOAS VACINADAS (2ª DOSE): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (2ª dose): %s) " % (totalvacinados2c)) or totalvacinados2c)
         while not validanumero(vacinados2ap):
             print("Informação inválida. Um número deve ser fornecido.")
-            recuperadosap = (input("TOTAL PESSOAS VACINADAS (2ª DOSE): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (2ª dose): %s) " % (totalvacinados2c)) or totalvacinados2c)
+            vacinados2ap = (input("TOTAL PESSOAS VACINADAS (2ª DOSE): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (2ª dose): %s) " % (totalvacinados2c)) or totalvacinados2c)
         vacinados2apurados = int(vacinados2ap)
         vacinados2dia = vacinados2apurados - totalvacinados2c
+        vacinadosuap = (input("TOTAL PESSOAS VACINADAS (DOSE ÚNICA): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (2ª dose): %s) " % (totalvacinadosuc)) or totalvacinadosuc)
+        while not validanumero(vacinados2ap):
+            print("Informação inválida. Um número deve ser fornecido.")
+            vacinadosuap = (input("TOTAL PESSOAS VACINADAS (DOSE ÚNICA): Quantos pessoas vacinadas? (padrão quantidade atual de vacinados (2ª dose): %s) " % (totalvacinadosuc)) or totalvacinadosuc)
+        vacinadosuapurados = int(vacinadosuap)
+        vacinadosudia = vacinadosuapurados - totalvacinadosuc
         txoclcap = (input("TAXA DE OCUPAÇÃO DE LEITOS: Qual a taxa em valor percentual (16.5 para 16,5%) de leitos ocupados? (opcional) ") or 0)
         txoclc = float(txoclcap)/100
         txocutcap = (input("TAXA DE OCUPAÇÃO DE UTI: Qual a taxa em valor percentual (16.5 para 16,5%) de leitos ocupados de UTI? (opcional) ") or 0)
@@ -257,16 +273,17 @@ def consolidacaso(data,idlocal):
         print("RECUPERADOS:\tTotais: %s\tNesta data: %s\tAumento: %s \tÍndice %s " % (recuperadosapurados, recuperadosdia, txcrc, txrecupc))
         print("VACINADOS: \t1ª dose: %s\t1ª dose nesta data: %s\t2ª dose: %s\t2ª dose nesta data: %s" % (vacinados1apurados,vacinados1dia,vacinados2apurados,vacinados2dia))
         print("OUTROS DADOS:\tTaxa de ocupação: %s\tTaxa de UTI: %s\tTaxa de Isolamento: %s " % (txoclc, txocutc, txisoc))
-        sqlrcc = "INSERT INTO balancos (iddistrito, data, novoscasos, novasmortes, aumentocasos, aumentomortes, registrodiario, txletalidade, novosrecuperados, aumentorecuperados, txocupacao, txuti, txisolamento, txincidencia, txrecuperados, vacinadose1, vacinadose2) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        sqlrcc = "INSERT INTO balancos (iddistrito, data, novoscasos, novasmortes, aumentocasos, aumentomortes, registrodiario, txletalidade, novosrecuperados, aumentorecuperados, txocupacao, txuti, txisolamento, txincidencia, txrecuperados, vacinadose1, vacinadose2, vacinadoseunica) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         confirmco = None
         while confirmco not in ("s", "n"):
             confirmco = input("Confirma? (s/n) ").lower()
             if confirmco == "s":
-                cur.execute(sqlrcc, (iddistpai,data,casosdia,mortosdia,txccc,txcmc,regdia,txletc,recuperadosdia,txcrc,txoclc,txocutc,txisoc,txinc,txrecupc,vacinados1dia,vacinados2dia))
+                cur.execute(sqlrcc, (iddistpai,data,casosdia,mortosdia,txccc,txcmc,regdia,txletc,recuperadosdia,txcrc,txoclc,txocutc,txisoc,txinc,txrecupc,vacinados1dia,vacinados2dia,vacinadosudia))
                 print(cur.lastrowid)
                 conex.commit()
                 print("Dados registrados.")
             elif confirmco == "n":
+                excluibalanco(idlocal,data,'sim')
                 print("Dados não cadastrados.")
             else:
                 print("Resposta inválida. Responda s para sim, ou n para não")
@@ -309,6 +326,7 @@ def inicializa():
                                     novosrecuperados integer,
                                     vacinadose1 integer,
                                     vacinadose2 integer,
+                                    vacinadoseunica integer,                                    
                                     aumentocasos real, 
                                     aumentomortes real,
                                     aumentorecuperados real, 
@@ -483,10 +501,10 @@ def registra(idlocal, data="pedir"):
     pass
 
 def mediamovel(iddistrito,dataref):
-    sqlmm = "SELECT data, novoscasos, novasmortes, novosrecuperados, txocupacao, txuti, txisolamento, txletalidade, vacinadose1, vacinadose2 FROM balancos WHERE iddistrito = ?  AND data < ? ORDER BY data DESC LIMIT 7"
+    sqlmm = "SELECT data, novoscasos, novasmortes, novosrecuperados, txocupacao, txuti, txisolamento, txletalidade, vacinadose1, vacinadose2, vacinadoseunica FROM balancos WHERE iddistrito = ?  AND data < ? ORDER BY data DESC LIMIT 7"
     dadosmm = cur.execute(sqlmm,(iddistrito,dataref,))
     tdmm = dadosmm.fetchall()
-    casos = mortes = recuperados = vacinados1 = vacinados2 = 0
+    casos = mortes = recuperados = vacinados1 = vacinados2 = vacinadosu = 0
     tocp = tuti = tiso = tlet = 0.0
     for numdt in tdmm:
         if numdt[1]: 
@@ -507,7 +525,8 @@ def mediamovel(iddistrito,dataref):
             vacinados1 = vacinados1 + int(numdt[8])
         if numdt[9]:
             vacinados2 = vacinados2 + int(numdt[9])        
-        
+        if numdt[10]:
+            vacinadosu = vacinadosu + int(numdt[10])            
     d = dict();
     d['casos'] = casos/7.0
     d['mortes'] = mortes/7.0
@@ -518,18 +537,18 @@ def mediamovel(iddistrito,dataref):
     d['txletalidade'] = tlet/7
     d['vacina1'] = vacinados1/7.0
     d['vacina2'] = vacinados2/7.0
+    d['vacinaunica'] = vacinadosu/7.0
     return d
-
 
 def txcrescimento(iddistrito,dataref,dias):
     if int(dias) == 1:
         offsetd = "-1 day"
     else:
         offsetd = "-" + str(dias) + " days"
-    sqldz = "SELECT data, sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as totalvacinados1, sum(vacinadose2) as totalvacinados2 FROM balancos WHERE iddistrito = ? AND data <= date(?,?) GROUP BY iddistrito"
-    sqlda = "SELECT data, sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as totalvacinados1, sum(vacinadose2) as totalvacinados2 FROM balancos WHERE iddistrito = ? AND data <= ? GROUP BY iddistrito"
+    sqldz = "SELECT data, sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as totalvacinados1, sum(vacinadose2) as totalvacinados2, sum(vacinadoseunica) as totalvacinadosunica FROM balancos WHERE iddistrito = ? AND data <= date(?,?) GROUP BY iddistrito"
+    sqlda = "SELECT data, sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) as totalvacinados1, sum(vacinadose2) as totalvacinados2, sum(vacinadoseunica) as totalvacinadosunica FROM balancos WHERE iddistrito = ? AND data <= ? GROUP BY iddistrito"
     gdz = cur.execute(sqldz,(iddistrito,dataref,offsetd,))
-    casoszero = morteszero = recuperadoszero = casosatual = mortesatual = recuperadosatual = vacinados1zero = vacinados2zero = vacinados1atual = vacinados2atual = 0
+    casoszero = morteszero = recuperadoszero = casosatual = mortesatual = recuperadosatual = vacinados1zero = vacinados2zero = vacinados1atual = vacinados2atual = vacinadosuzero = vacinadosuatual = 0
     for dtz in gdz:
         if dtz[1]:
             casoszero = float(dtz[1])
@@ -540,7 +559,9 @@ def txcrescimento(iddistrito,dataref,dias):
         if dtz[4]:
             vacinados1zero = float(dtz[4])
         if dtz[5]:
-            vacinados2zero = float(dtz[5])         
+            vacinados2zero = float(dtz[5])
+        if dtz[6]:
+            vacinadosuzero = float(dtz[6])       
     gda = cur.execute(sqlda,(iddistrito,dataref,))
     for dta in gda:
         if dta[1]:
@@ -552,21 +573,24 @@ def txcrescimento(iddistrito,dataref,dias):
         if dta[4]:
             vacinados1atual = float(dta[4])
         if dta[5]:
-            vacinados2atual = float(dta[5])        
+            vacinados2atual = float(dta[5])
+        if dta[6]:
+            vacinadosuatual = float(dta[6])      
     c = dict();
     c['aumentocasos'] = (casosatual/casoszero) - 1.0 if casoszero != 0 else 0
     c['aumentomortes'] = (mortesatual/morteszero) - 1.0 if morteszero != 0 else 0
     c['aumentorecuperados'] = (recuperadosatual/recuperadoszero) - 1.0 if recuperadoszero != 0 else 0
     c['aumentovacinados1'] = (vacinados1atual/vacinados1zero) - 1.0 if vacinados1zero != 0 else 0
     c['aumentovacinados2'] = (vacinados2atual/vacinados2zero) - 1.0 if vacinados2zero != 0 else 0
+    c['aumentovacinadosunica'] = (vacinadosuatual/vacinadosuzero) - 1.0 if vacinadosuzero != 0 else 0
     return c
 
 def exibeestatistica(iddist,data,web="n"):
-    sqltotcasos = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) AS totalvacinados1, sum(vacinadose2) AS totalvacinados2 FROM balancos WHERE iddistrito = ? AND data <= ? GROUP BY iddistrito"
+    sqltotcasos = "SELECT sum(novoscasos) AS totalcasos, sum(novasmortes) AS totalmortes, sum(novosrecuperados) AS totalrecuperados, sum(vacinadose1) AS totalvacinados1, sum(vacinadose2) AS totalvacinados2, sum(vacinadoseunica) as totalvacinadosunica FROM balancos WHERE iddistrito = ? AND data <= ? GROUP BY iddistrito"
     cur.execute(sqltotcasos,(iddist,data,))
     gtc = cur.fetchone()
     try: 
-        totalcasos = totalmortos = totalrecuperados = totalvacinados1 = totalvacinados2 = 0
+        totalcasos = totalmortos = totalrecuperados = totalvacinados1 = totalvacinados2 = totalvacinadosunica = 0
         if validanumero(gtc[0]):
             totalcasos = int(gtc[0])
         if validanumero(gtc[1]):
@@ -577,11 +601,12 @@ def exibeestatistica(iddist,data,web="n"):
             totalvacinados1 = int(gtc[3])
         if validanumero(gtc[4]): 
             totalvacinados2 = int(gtc[4])
-        
-        sqldadosdiae = "SELECT novoscasos, novasmortes, novosrecuperados, aumentocasos, aumentomortes, aumentorecuperados, registrodiario, txocupacao, txuti, txisolamento, txincidencia, txletalidade, txrecuperados, vacinadose1, vacinadose2 FROM balancos WHERE iddistrito = ? AND data = ?"
+        if validanumero(gtc[5]): 
+            totalvacinadosunica = int(gtc[5])        
+        sqldadosdiae = "SELECT novoscasos, novasmortes, novosrecuperados, aumentocasos, aumentomortes, aumentorecuperados, registrodiario, txocupacao, txuti, txisolamento, txincidencia, txletalidade, txrecuperados, vacinadose1, vacinadose2, vacinadoseunica FROM balancos WHERE iddistrito = ? AND data = ?"
         cur.execute(sqldadosdiae,(iddist,data,))
         dcd = cur.fetchone()
-        novoscasos = novasmortes = novosrecuperados = novosvacinados1 = novosvacinados2 = 0
+        novoscasos = novasmortes = novosrecuperados = novosvacinados1 = novosvacinados2 = novosvacinadosunica = 0
         txa_casos = txa_mortes = txa_recuperados = tx_ocup = tx_uti = tx_isolam = tx_inc = tx_let = tx_recup = 0.0
         regsitrodiario = ""
         if validanumero(dcd[0]):
@@ -613,7 +638,9 @@ def exibeestatistica(iddist,data,web="n"):
         if validanumero(dcd[13]):
             novosvacinados1 = dcd[13]
         if validanumero(dcd[14]):
-            novosvacinados2 = dcd[14]             
+            novosvacinados2 = dcd[14]
+        if validanumero(dcd[15]):
+            novosvacinadosunica = dcd[15]            
         memovlocal = mediamovel(iddist,data)
         mm_casos = float(memovlocal['casos'])
         mm_mortos = float(memovlocal['mortes'])
@@ -624,6 +651,7 @@ def exibeestatistica(iddist,data,web="n"):
         mm_letalidade = float(memovlocal['txletalidade'])
         mm_vacina1 = float(memovlocal['vacina1'])
         mm_vacina2 = float(memovlocal['vacina2'])
+        mm_vacinau = float(memovlocal['vacinaunica'])
         memovlocal15 = mediamovel(iddist,diaanterior(data,15))
         # print(diaanterior(data,15))
         mm_casos15 = float(memovlocal15['casos'])
@@ -632,22 +660,26 @@ def exibeestatistica(iddist,data,web="n"):
         mm_txisolamento15 = float(memovlocal15['txisolamento'])
         mm_vacina115 = float(memovlocal15['vacina1'])
         mm_vacina215 = float(memovlocal15['vacina2'])
+        mm_vacinau15 = float(memovlocal15['vacinaunica'])
         txcrsemloc = txcrescimento(iddist,data,7)
         au7d_casos = float(txcrsemloc['aumentocasos'])*100
         au7d_mortos = float(txcrsemloc['aumentomortes'])*100
         au7d_recuperados = float(txcrsemloc['aumentorecuperados'])*100
         au7d_vacinados1 = float(txcrsemloc['aumentovacinados1'])*100
         au7d_vacinados2 = float(txcrsemloc['aumentovacinados2'])*100
+        au7d_vacinadosu = float(txcrsemloc['aumentovacinadosunica'])*100
         txcrmesloc = txcrescimento(iddist,data,30)
         au30d_casos = float(txcrmesloc['aumentocasos'])*100
         au30d_mortos = float(txcrmesloc['aumentomortes'])*100
         au30d_recuperados = float(txcrmesloc['aumentorecuperados'])*100
         au30d_vacinados1 = float(txcrmesloc['aumentovacinados1'])*100
         au30d_vacinados2 = float(txcrmesloc['aumentovacinados2'])*100
+        au30d_vacinadosu = float(txcrmesloc['aumentovacinadosunica'])*100
         varmm_casos = (mm_casos/mm_casos15) - 1.0 if mm_casos15 != 0.0 else 0
         varmm_mortos = (mm_mortos/mm_mortos15) - 1.0 if mm_mortos15 != 0.0 else 0
         varmm_vacina1 = (mm_vacina1/mm_vacina115) - 1.0 if mm_vacina115 != 0.0 else 0
         varmm_vacina2 = (mm_vacina2/mm_vacina215) - 1.0 if mm_vacina215 != 0.0 else 0
+        varmm_vacinau = (mm_vacinau/mm_vacinau15) - 1.0 if mm_vacinau15 != 0.0 else 0
         varmm_recuperados = (mm_recuperados/mm_recuperados15) - 1.0 if mm_recuperados15 != 0.0 else 0
         varmm_isolamento = (mm_txisolamento/mm_txisolamento15) - 1.0 if mm_txisolamento15 != 0.0 else 0
         if (web == "n"):
@@ -691,27 +723,32 @@ def exibeestatistica(iddist,data,web="n"):
                 popl = cur.fetchone()
                 populacao = popl[0]
                 diasrestdose1 = int((populacao-totalvacinados1)/mm_vacina1)
-                diasrestdose2 = int((populacao-totalvacinados2)/mm_vacina2)
+                diasrestdose2 = int((populacao-(totalvacinados2+totalvacinadosunica))/mm_vacina2)
                 prevfimdose1 = datetime.strptime(diaanterior(data,-(diasrestdose1)), '%Y-%m-%d')
                 prevfimdose2 = datetime.strptime(diaanterior(data,-(diasrestdose2)), '%Y-%m-%d')
                 prevfimdose1f = prevfimdose1.strftime('%d/%m/%Y')
                 prevfimdose2f = prevfimdose2.strftime('%d/%m/%Y')
                 print("VACINADOS:")
-                totalvacinados = totalvacinados1 + totalvacinados2
+                totalvacinados = totalvacinados1 + totalvacinados2 + totalvacinadosunica
+                imunizadostotal = totalvacinados2 + totalvacinadosunica
+                dosesdodia = novosvacinados1 + novosvacinados2 + novosvacinadosunica
+                proporcao_dose1 = (float(totalvacinados1)/float(populacao))*100
+                proporcao_imunizados = (float(imunizadostotal)/float(populacao))*100
                 diaontem = diaanterior(data)
                 totvacina = vacinados(iddist,diaontem)
+                
                 vacina1dant = vacina2dant = 0.000000000001
                 if totvacina['dose1'] is not None:
                     vacina1dant = vacina1dant + float(totvacina['dose1'])
                 if totvacina['dose2'] is not None:
                     vacina2dant = vacina2dant + float(totvacina['dose2'])
                 txa_vacinados1 = (totalvacinados1/vacina1dant) - 1.0
-                txa_vacinados2 = (totalvacinados2/vacina2dant) - 1.0          
+                txa_vacinados2 = (totalvacinados2/vacina2dant) - 1.0
                 msgvac = ""
-                msgvac = msgvac + '\tTotal: {:n} ({:n} com 1ª dose e {:n} com 2ª dose)'.format(totalvacinados, totalvacinados1, totalvacinados2)
-                msgvac = msgvac + '\tNovos: 1ª dose {:n}, 2ª dose {:n}'.format(novosvacinados1, novosvacinados2)
-                msgvac = msgvac + '\n\tProporção da população vacinada: ({:n}% com 1ª dose e {:n}% com 2ª dose)'.format(float(totvacina['txdose1'])*100, float(totvacina['txdose2'])*100)
-                msgvac = msgvac + '\n\tPrevisão para conclusão (baseado na média móvel atual de vacinações): 1ª dose - {}, 2ª dose - {}'.format(prevfimdose1f, prevfimdose2f)
+                msgvac = msgvac + '\tPopulação totalmente imunizada: {:n}\n\tTotal: {:n} ({:n} com 1ª dose, {:n} com 2ª dose e {:n} com dose única)'.format(imunizadostotal, totalvacinados, totalvacinados1, totalvacinados2, totalvacinadosunica)
+                msgvac = msgvac + '\n\tNesta data: {:n} ({:n} com 1ª dose, {:n} com 2ª dose e {:n} com dose única)'.format(dosesdodia, novosvacinados1, novosvacinados2, novosvacinadosunica)
+                msgvac = msgvac + '\n\tProporção da população vacinada: ({:n}% com 1ª dose,  {:n}% com 2ª/única dose)'.format(proporcao_dose1, proporcao_imunizados)
+                msgvac = msgvac + '\n\tPrevisão para conclusão (baseado na média móvel atual de vacinações): 1ª dose - {}, 2ª/única dose - {}'.format(prevfimdose1f, prevfimdose2f)
                 msgvac = msgvac + '\n\tMédia móvel 1ª dose (7 registros anteriores): {:n}'.format(mm_vacina1) + ', 15 dias antes: {:n}'.format(mm_vacina115) + ', Variação de vacinados (1ª dose): {:.2f}%'.format(varmm_vacina1*100) + ', Tendência: ' + statusav(varmm_vacina1)
                 msgvac = msgvac + '\n\tMédia móvel 2ª dose (7 registros anteriores): {:n}'.format(mm_vacina2) + ', 15 dias antes: {:n}'.format(mm_vacina215) + ', Variação de vacinados (2ª dose): {:.2f}%'.format(varmm_vacina2*100) + ', Tendência: ' + statusav(varmm_vacina2)
                 msgvac = msgvac + '\n\tAumento de vacinados: 1ª dose {:.1n}% (ao balanço anterior)'.format(txa_vacinados1)
@@ -753,21 +790,28 @@ def vacinados(iddist,data):
     cur.execute(sqlpoplocal, (iddist,))
     pop_data = cur.fetchone()
     populacao = pop_data[0]
-    sqlvac = "SELECT SUM(vacinadose1), sum(vacinadose2) FROM balancos WHERE data <= ? AND iddistrito = ?"
+    sqlvac = "SELECT SUM(vacinadose1), sum(vacinadose2), sum(vacinadoseunica) FROM balancos WHERE data <= ? AND iddistrito = ?"
     cur.execute(sqlvac, (data,iddist,))
     dadovacina = cur.fetchone()
     vacinado = dict();
-    vacinado['dose1'] = vacinado['dose2'] = 0
+    vacinado['dose1'] = vacinado['dose2'] = vacinado['doseunica'] = vacinado['imunizados'] = 0
+    vacinado['txdose1'] = vacinado['txdose2'] = vacinado['txdoseunica'] = vacinado['tximunizados'] = 0.0
     if dadovacina[0] is not None: 
         vacinado['dose1'] = dadovacina[0]
         vacinado['txdose1'] = dadovacina[0]/(populacao*1.0)
     if dadovacina[1] is not None: 
         vacinado['dose2'] = dadovacina[1]
         vacinado['txdose2'] = dadovacina[1]/(populacao*1.0)
+    if dadovacina[2] is not None: 
+        vacinado['doseunica'] = dadovacina[2]
+        vacinado['txdoseunica'] = dadovacina[2]/(populacao*1.0)
+    if dadovacina[1] is not None and dadovacina[2] is not None: 
+        vacinado['imunizados'] = dadovacina[1] + dadovacina[2]
+        vacinado['tximunizados'] = (dadovacina[1] + dadovacina[2])/(populacao*1.0)
     return vacinado
 
 def updbalanco(dado,idlocal, data="pedir", valor="pedir"):
-    dados = ["txocupacao","txuti","txisolamento","vacinadose1","vacinadose2"]
+    dados = ["txocupacao","txuti","txisolamento","vacinadose1","vacinadose2","vacinadoseunica"]
     if dado not in dados:
         dado = input("Digite o itpo de informação a ser atualizada (Valores possíveis: %s): " % dados)
         while dado not in dados:
@@ -777,7 +821,8 @@ def updbalanco(dado,idlocal, data="pedir", valor="pedir"):
         "txuti": "Taxa de ocupação de leitos de UTI",
         "txisolamento": "Taxa de isolamento",
         "vacinadose1": "Número diário de vacinados (1ª dose)",
-        "vacinadose2": "Número diário de vacinados (2ª dose)"
+        "vacinadose2": "Número diário de vacinados (2ª dose)",
+        "vacinadoseunica": "Número diário de vacinados (dose única)"
     }
     if data == "pedir" or validadata(data) is False: 
         dataobs = (input("Digite a data da medição (formato %s  - padrão data atual): " % hoje) or hoje)
@@ -850,7 +895,7 @@ def balanco(idlocal,dataref=hoje):
 
     pass
 
-def excluibalanco(idlocal,dataref=hoje):
+def excluibalanco(idlocal,dataref=hoje,auto='nao'):
     sqlgid = "SELECT idlocal, nomelocal FROM locais WHERE idlocal = ?"
     gid = cur.execute(sqlgid,(idlocal,))
     idloc = None
@@ -866,7 +911,12 @@ def excluibalanco(idlocal,dataref=hoje):
         sqldel = "DELETE FROM balancos WHERE iddistrito IN (SELECT iddistrito FROM distritos WHERE idlocal = ?) AND data = ?"
         cadastra = None
         while cadastra not in ("s", "n"):
-            cadastra = input("Está tudo certo? Confirma? (s/n) ").lower()
+            if auto == 'sim':
+                cadastra = 's'
+            elif auto == 'nao':
+                cadastra = input("Está tudo certo? Confirma? (s/n) ").lower()
+            else:
+                cadastra = 'n'
             if cadastra == "s":        
                 cur.execute(sqldel,(idloc,data.strftime("%Y-%m-%d")))
                 registrosalterados = int(cur.rowcount)
@@ -907,13 +957,16 @@ if args.registra:
                 if (args.vacinacao):
                     vacinadose1ap = args.vacinacao[0]
                     vacinadose2ap = args.vacinacao[1]
+                    vacinadoseuap = args.vacinacao[2]
                     diaontem = diaanterior(args.data)
                     totvacina = vacinados(args.registra,diaontem)
                     novosvacinados1 = vacinadose1ap - totvacina['dose1']
                     novosvacinados2 = vacinadose2ap - totvacina['dose2']
-                    print("Confira os dados: \n\tVacinados 1ª dose: %s\tNovos: %s\n\tVacinados 2ª dose: %s\t\tNovos: %s\nSe os dados estiverem corretos, confirme cada um dos dados solicitados." % (vacinadose1ap,novosvacinados1,vacinadose2ap,novosvacinados2))
+                    novosvacinadosu = vacinadoseuap - totvacina['doseunica']
+                    print("Confira os dados: \n\tVacinados 1ª dose: %s\tNovos: %s\n\tVacinados 2ª dose: %s\t\tNovos: %s\n\tVacinados dose única: %s\t\tNovos: %s\nSe os dados estiverem corretos, confirme cada um dos dados solicitados." % (vacinadose1ap,novosvacinados1,vacinadose2ap,novosvacinados2,vacinadoseuap,novosvacinadosu))
                     updbalanco("vacinadose1",args.registra,args.data,novosvacinados1)
                     updbalanco("vacinadose2",args.registra,args.data,novosvacinados2)
+                    updbalanco("vacinadoseunica",args.registra,args.data,novosvacinadosu)
             else:
 	            registra(args.registra,args.data)
         else:
