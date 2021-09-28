@@ -29,12 +29,13 @@ parser.add_argument("-r", "--registra", type=int, metavar="idlocal", help="cadas
 parser.add_argument("-b", "--balanco", type=int, metavar="idlocal", help="exibe os dados do balanço para uma cidade existente.", action='store')
 parser.add_argument("-x", "--exclui", type=int, metavar="idlocal", help="exclui os dados do balanço para uma cidade existente.", action='store')
 parser.add_argument("-d", "--data", type=str, metavar="data", help="(opera com as opções -b e -r) define a data de referência. Omitido -b assume a data atual, -r será solicitado. ", action='store')
-# parser.add_argument("-w", "--web", help="gera o relatório no formato html.", action='store_true')
+parser.add_argument("-w", "--web", help="gera o relatório no formato html.", action='store_true')
 # parser.add_argument("-p", "--publicar", help="publicar relatório no formato html.", action='store_true')
-parser.add_argument("--uti", type=float, metavar="taxadeuti", help="registra somente a taxa de uti para o local (requer -r e a data deve estar registrada).", nargs='?', const='pedir')
-parser.add_argument("--isolamento", type=float, metavar="taxadeisolamento", help="registra somente a taxa de uti para o local (requer -r e a data deve estar registrada).", nargs='?', const='pedir')
-parser.add_argument("--ocupacao", type=float, metavar="taxadeocupacao", help="registra somente a taxa de ocupação de leitos para o local (requer -r e a data deve estar registrada).", nargs='?', const='pedir')
+parser.add_argument("--uti", type=float, metavar="taxadeuti", help="registra somente a taxa de uti para o local (requer -r e a data deve estar registrada).", nargs='?', const=-1)
+parser.add_argument("--isolamento", type=float, metavar="taxadeisolamento", help="registra somente a taxa de uti para o local (requer -r e a data deve estar registrada).", nargs='?', const=-1)
+parser.add_argument("--ocupacao", type=float, metavar="taxadeocupacao", help="registra somente a taxa de ocupação de leitos para o local (requer -r e a data deve estar registrada).", nargs='?', const=-1)
 parser.add_argument("--vacinacao", type=int, metavar=("Vacinados1dose","Vacinados2dose","vacinadosdoseunica"), help="registra somente a quantidade de pessoas vacinadas para o local (requer -r e -d definidos e é exigido dois valores: vacinados da 1ª dose e da 2ª dose).", nargs=3, action='store')
+parser.add_argument("--resumo", help="[requer -b] exibe apenas os dados do local, sem detalhar os distritos.", action='store_true')
 args = parser.parse_args()
 
 hoje = datetime.now().strftime("%Y-%m-%d")
@@ -602,7 +603,8 @@ def exibeestatistica(iddist,data,web="n"):
         if validanumero(gtc[4]): 
             totalvacinados2 = int(gtc[4])
         if validanumero(gtc[5]): 
-            totalvacinadosunica = int(gtc[5])        
+            totalvacinadosunica = int(gtc[5])
+        
         sqldadosdiae = "SELECT novoscasos, novasmortes, novosrecuperados, aumentocasos, aumentomortes, aumentorecuperados, registrodiario, txocupacao, txuti, txisolamento, txincidencia, txletalidade, txrecuperados, vacinadose1, vacinadose2, vacinadoseunica FROM balancos WHERE iddistrito = ? AND data = ?"
         cur.execute(sqldadosdiae,(iddist,data,))
         dcd = cur.fetchone()
@@ -810,7 +812,7 @@ def vacinados(iddist,data):
         vacinado['tximunizados'] = (dadovacina[1] + dadovacina[2])/(populacao*1.0)
     return vacinado
 
-def updbalanco(dado,idlocal, data="pedir", valor="pedir"):
+def updbalanco(dado,idlocal, data="pedir", valor=-1):
     dados = ["txocupacao","txuti","txisolamento","vacinadose1","vacinadose2","vacinadoseunica"]
     if dado not in dados:
         dado = input("Digite o itpo de informação a ser atualizada (Valores possíveis: %s): " % dados)
@@ -836,7 +838,7 @@ def updbalanco(dado,idlocal, data="pedir", valor="pedir"):
     registros = cur.fetchone()
     numregistros = registros[0]
     if numregistros > 0:
-        if valor == "pedir" or validanumero(valor) is False:
+        if valor <= 0 or validanumero(valor) is False:
             valorobs = int(input("Digite o valor de %s, onde separa-se inteiro e fração com ponto, caso necessário (16,7 como 16.7) Valor padrão 0: " % titulodado[dado]) or 0)
             while not validanumero(valorobs):
                 print("Valor informado inválido.")
@@ -845,6 +847,7 @@ def updbalanco(dado,idlocal, data="pedir", valor="pedir"):
             valorobs = int(valor)
         if dado in ["txocupacao","txuti","txisolamento"]:
             valorobs /= 100.0
+            
         print("Confira os dados: \n\tDistrito: %s\n\tData: %s\n\t%s: %s" % (nomedistrito(idlocal), data, titulodado[dado], valorobs))
         sqlrc = "UPDATE balancos SET " + dado + " = ? WHERE iddistrito = ? AND data = ?"
         confirmc = None
@@ -862,7 +865,7 @@ def updbalanco(dado,idlocal, data="pedir", valor="pedir"):
     else:
         print("Não foram registrados dados para a data.")
 
-def balanco(idlocal,dataref=hoje):
+def balanco(idlocal,dataref=hoje,resumo="n",web="n"):
     sqlgid = "SELECT idlocal, nomelocal FROM locais WHERE idlocal = ?"
     gid = cur.execute(sqlgid,(idlocal,))
     idloc = None
@@ -877,14 +880,15 @@ def balanco(idlocal,dataref=hoje):
         print("Data da observação: %s\tLocal: %s" % (data.strftime("%d/%m/%Y"),nomelocal))
         print("\nResumo para o local\n")
         iddip = buscadistritopai(idloc)
-        exibeestatistica(iddip, dataref)
+        exibeestatistica(iddip, dataref, web)
         sqldist = "SELECT iddistrito, nomedistrito FROM distritos WHERE idlocal = ? AND registropai IS NULL"
         distritos = cur.execute(sqldist,(idlocal,))
         distg = distritos.fetchall()
-        print("\nBalanço por distrito:\n")
-        for distid in distg:
-            print("Balanço para o distrito %s" % (distid[1]))
-            exibeestatistica(distid[0], dataref)
+        if (resumo == "n"):
+            print("\nBalanço por distrito:\n")
+            for distid in distg:
+                print("Balanço para o distrito %s" % (distid[1]))
+                exibeestatistica(distid[0], dataref, web)
 
     else:
         print("Local inexistente ou inválido.")
@@ -983,13 +987,19 @@ if args.registra:
             registra(args.registra,"pedir")
     
 if args.balanco:
+    optresumo = optweb = "n"
+    optdata = "pedir"
+    if args.resumo:
+        optresumo = "s"
+    if args.web:
+        optweb = "s"
     if args.data:
         if validadata(args.data):
-            balanco(args.balanco,args.data)
+            balanco(args.balanco,args.data,optresumo,optweb)
         else:
             print("Data informada inválida: utilize uma dáta válida, no passado para a opção -d ou omita a opção visualize os dados da data atual.")
     else:
-        balanco(args.balanco)
+        balanco(args.balanco,optdata,optresumo,optweb)
 
 if args.exclui:
     if args.data:
