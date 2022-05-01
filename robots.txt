@@ -1,0 +1,3 @@
+User-agent: *
+Disallow:
+Sitemap: https://kazzttor.github.io/covid19-python/sitemap.xml
